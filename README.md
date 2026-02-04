@@ -22,13 +22,19 @@
 
 ## 주요 기능
 
-- **파일 업로드**: Java JAR 파일을 업로드하여 자동 분석
-- **설정 입력**: Python/Node.js는 requirements.txt 또는 package.json 내용 입력
-- **커스터마이징**: 런타임 버전, 포트, 환경변수, Health Check 경로 등 설정
-- **멀티스테이지 빌드**: 최적화된 Docker 이미지 생성
-- **보안**: Non-root 사용자, Health Check 포함
-- **미리보기 및 편집**: 생성된 Dockerfile을 CodeMirror 에디터로 확인하고 수정
-- **다운로드**: 생성된 Dockerfile 다운로드
+### 핵심 기능
+- **JAR 파일 업로드**: Java JAR 파일을 업로드하여 자동 분석 (실제 파일명 자동 반영)
+- **간편한 설정**: 필수 설정만 입력하면 바로 생성 가능
+- **선택적 기능**: Health Check, 환경변수, 시스템 의존성은 체크박스로 선택
+- **보안**: Non-root 사용자 자동 설정
+- **미리보기 및 편집**: CodeMirror 에디터로 실시간 확인 및 수정
+- **다운로드**: 생성된 Dockerfile 다운로드 또는 클립보드 복사
+
+### UI 개선
+- **시각적 언어 선택**: 실제 언어 로고 표시 및 선택 상태 하이라이트
+- **언어별 맞춤 플레이스홀더**: Python/Node.js 각각에 맞는 예시 표시
+- **커스텀 알림 모달**: 브라우저 기본 alert 대체
+- **폐쇄망 지원**: 모든 아이콘 및 리소스 로컬 저장
 
 ## 빠른 시작
 
@@ -64,28 +70,38 @@ docker-compose up --build
 
 ### 1. 언어 선택
 
-Python, Node.js, Java 중 선택
+Python, Node.js, Java 중 선택 (로고 아이콘으로 시각적 표시)
 
-### 2. 프레임워크 및 입력
+### 2. 입력 방식
 
-- **Java**: JAR 파일 업로드 (선택사항)
-- **Python**: 프레임워크 선택 및 requirements.txt 내용 입력
-- **Node.js**: 프레임워크 선택 및 package.json 내용 입력
+#### Python / Node.js
+바로 설정 단계로 이동하여 다음을 입력:
+- Base Image (필수)
+- 포트 (필수)
+- 서비스 URL (필수)
+- 실행 명령어 (필수, 언어별 예시 표시)
 
-### 3. Docker 설정
+#### Java
+1. JAR 파일 업로드
+2. 설정 단계에서 다음을 입력:
+   - Base Image (필수)
+   - 포트 (필수)
+   - 서비스 URL (필수)
+   - 실행 명령어 (필수)
 
-- 런타임 버전 (예: Python 3.11, Node 20, Java 17)
-- 포트 번호
-- 환경 변수
-- Health Check 경로
-- 시스템 의존성 패키지
-- Base Image (선택사항)
+### 3. 선택 설정 (모든 언어)
+
+체크박스로 활성화:
+- **환경 변수**: KEY=VALUE 형식으로 입력
+- **Health Check**: 헬스체크 경로 (기본: /health)
+- **시스템 의존성**: 공백으로 구분된 패키지명
 
 ### 4. 생성 및 다운로드
 
-- Dockerfile 생성
+- "Dockerfile 생성" 버튼 클릭
 - CodeMirror 에디터로 미리보기 및 편집
-- 다운로드 또는 클립보드에 복사
+- "다운로드" 또는 "클립보드에 복사" 선택
+- "🔄 Dockerfile 재생성"으로 처음부터 다시 시작
 
 ## API 엔드포인트
 
@@ -140,8 +156,13 @@ containerize-tool/
 │   └── Dockerfile
 ├── frontend/
 │   ├── index.html
-│   └── js/
-│       └── app.js
+│   └── static/
+│       ├── js/
+│       │   └── app.js
+│       └── icons/
+│           ├── python.svg
+│           ├── nodejs.svg
+│           └── java.svg
 ├── uploads/                     # 임시 파일 저장소
 ├── docker-compose.yml
 └── README.md

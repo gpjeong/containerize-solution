@@ -51,17 +51,16 @@
 - 빌드/시작 명령어 추출
 
 ### Java
-| 빌드 도구 | 특징 |
+| 입력 방식 | 특징 |
 |----------|------|
-| **Maven** | pom.xml 기반 빌드 |
-| **Gradle** | build.gradle 기반 빌드 |
-| **JAR** | 빌드된 Fat JAR 파일 |
+| **JAR 파일** | 빌드된 Fat JAR 파일 업로드 |
 
 **자동 감지 기능:**
 - JAR 파일에서 MANIFEST.MF 추출
 - Spring Boot 버전 감지
 - Main Class 자동 탐지
 - Fat JAR vs Thin JAR 구분
+- 업로드한 파일명 자동 반영
 
 ---
 
@@ -106,42 +105,47 @@ pydantic==2.10.0
 ```
 
 #### 1.3 Java
-**입력 방식 (3가지):**
+**입력 방식:**
 
-**방식 1: JAR 파일 업로드**
+**JAR 파일 업로드**
 ```
 app.jar 업로드
 → MANIFEST.MF 분석
 → Spring Boot 감지
 → Main Class 추출
+→ 실제 파일명 자동 반영
 ```
 
-**방식 2: Maven 소스 프로젝트**
-```
-빌드 도구: Maven 선택
-pom.xml 내용 붙여넣기
-→ 의존성 분석
-→ 멀티스테이지 빌드 생성
-```
-
-**방식 3: Gradle 소스 프로젝트**
-```
-빌드 도구: Gradle 선택
-build.gradle 내용 붙여넣기
-→ 의존성 분석
-→ 멀티스테이지 빌드 생성
-```
+**특징:**
+- 업로드한 JAR 파일의 실제 파일명이 Dockerfile에 자동으로 반영됩니다
+- 예: `my-spring-app-2.0.0.jar` 업로드 시 → `COPY my-spring-app-2.0.0.jar app.jar`
 
 ### 2. Docker 설정
 
-#### 2.1 기본 설정
-| 설정 항목 | 설명 | 기본값 | 예시 |
-|----------|------|--------|------|
-| **런타임 버전** | 언어 런타임 버전 | 자동 | Python: 3.11, Node: 20, Java: 17 |
-| **포트** | 서비스 포트 | 8000 | Python: 8000, Node: 3000, Java: 8080 |
-| **Health Check 경로** | 헬스체크 엔드포인트 | /health | /actuator/health, /api/health |
+#### 2.1 필수 설정 (Python/Node.js)
+| 설정 항목 | 설명 | 예시 |
+|----------|------|------|
+| **Base Image** | Docker 베이스 이미지 | python:3.11-slim, node:20-alpine |
+| **포트** | 서비스 포트 | Python: 8000, Node: 3000 |
+| **서비스 URL** | 배포될 서비스 URL | https://api.example.com |
+| **실행 명령어** | 컨테이너 시작 명령어 | uvicorn main:app --host 0.0.0.0 --port 8000 |
 
-#### 2.2 환경 변수
+#### 2.2 필수 설정 (Java)
+| 설정 항목 | 설명 | 예시 |
+|----------|------|------|
+| **Base Image** | Docker 베이스 이미지 | eclipse-temurin:17-jre-alpine |
+| **포트** | 서비스 포트 | 8080 |
+| **서비스 URL** | 배포될 서비스 URL | https://api.example.com |
+| **실행 명령어** | 컨테이너 시작 명령어 | java -jar app.jar |
+
+#### 2.3 선택 설정
+
+**모든 언어에서 다음 설정은 선택사항입니다:**
+- **환경 변수**: 체크박스로 활성화
+- **Health Check**: 체크박스로 활성화
+- **시스템 의존성 패키지**: 체크박스로 활성화
+
+#### 2.4 환경 변수 (선택사항)
 **입력 형식:**
 ```
 ENV=production
@@ -158,7 +162,19 @@ ENV DATABASE_URL="postgresql://localhost/mydb"
 ENV API_KEY="your-api-key"
 ```
 
-#### 2.3 시스템 의존성
+#### 2.5 Health Check (선택사항)
+**기본값:**
+```
+/health
+```
+
+**커스터마이징 가능:**
+```
+/actuator/health  # Spring Boot
+/api/health       # 커스텀 경로
+```
+
+#### 2.6 시스템 의존성 (선택사항)
 **입력 형식:**
 ```
 curl wget git
@@ -178,27 +194,25 @@ RUN apt-get update && apt-get install -y \
 RUN apk add --no-cache curl wget git
 ```
 
-#### 2.4 고급 설정
+#### 2.7 UI 개선사항
 
-**Base Image (선택사항):**
-```
-python:3.11-alpine
-node:20-slim
-eclipse-temurin:17-jre
-```
+**언어 선택:**
+- 각 언어별 실제 로고 아이콘 표시 (Python, Node.js, Java)
+- 선택된 언어 시각적 표시 (색상 하이라이트)
+- 폐쇄망에서도 작동 (로컬 SVG 파일 사용)
 
-**서비스 URL (선택사항):**
-```
-https://api.example.com
-→ ENV SERVICE_URL="https://api.example.com"
-```
+**입력 플레이스홀더:**
+- 언어별 맞춤형 예시 표시
+- Python: `uvicorn main:app --host 0.0.0.0 --port 8000`
+- Node.js: `node server.js`
 
-**커스텀 실행 명령어 (선택사항):**
-```
-Python: python main.py --reload
-Node.js: node server.js --port 3000
-Java: java -jar app.jar --spring.profiles.active=prod
-```
+**알림:**
+- 커스텀 모달 팝업 (브라우저 기본 alert 대체)
+- 성공/오류 구분 표시 (✅/⚠️)
+
+**재생성:**
+- "🔄 Dockerfile 재생성" 버튼
+- 커스텀 확인 모달
 
 ### 3. Dockerfile 생성 및 미리보기
 
@@ -220,19 +234,17 @@ Java: java -jar app.jar --spring.profiles.active=prod
 
 ## 사용 시나리오
 
-### 시나리오 1: Python FastAPI 프로젝트
+### 시나리오 1: Python 프로젝트
 
 **입력:**
 ```
 언어: Python
-프레임워크: FastAPI
-런타임 버전: 3.11
+Base Image: python:3.11-slim
 포트: 8000
-requirements.txt:
-  fastapi==0.115.0
-  uvicorn[standard]==0.32.0
-환경 변수:
-  ENV=production
+서비스 URL: https://api.example.com
+실행 명령어: uvicorn main:app --host 0.0.0.0 --port 8000
+환경 변수 (선택): ENV=production
+Health Check (선택): /health
 ```
 
 **생성되는 Dockerfile:**
@@ -252,86 +264,93 @@ RUN chown -R appuser:appuser /app
 USER appuser
 
 ENV ENV="production"
+ENV SERVICE_URL="https://api.example.com"
 
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s \
-  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
+  CMD curl --fail http://localhost:8000/health || exit 1
 
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
-### 시나리오 2: Node.js Next.js 프로젝트 (멀티스테이지)
+### 시나리오 2: Node.js 프로젝트
 
 **입력:**
 ```
 언어: Node.js
-프레임워크: Next.js
-런타임 버전: 20
+Base Image: node:20-alpine
 포트: 3000
-패키지 매니저: pnpm (자동 감지)
+서비스 URL: https://api.example.com
+실행 명령어: node server.js
+시스템 의존성 (선택): curl
 ```
 
 **생성되는 Dockerfile:**
 ```dockerfile
-# Stage 1: Dependencies
-FROM node:20-alpine AS deps
-WORKDIR /app
-COPY package*.json ./
-COPY pnpm-lock.yaml ./
-RUN corepack enable && pnpm install --frozen-lockfile
+FROM node:20-alpine AS base
 
-# Stage 2: Builder
-FROM node:20-alpine AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
-RUN npm run build
+# Install system dependencies
+RUN apk add --no-cache curl
 
-# Stage 3: Runtime
-FROM node:20-alpine AS runtime
 RUN addgroup -S appuser && adduser -S appuser -G appuser
+
 WORKDIR /app
-COPY --from=builder --chown=appuser /app/.next/standalone ./
-COPY --from=builder --chown=appuser /app/.next/static ./.next/static
-COPY --from=builder --chown=appuser /app/public ./public
+
+COPY package*.json ./
+RUN npm ci --only=production
+
+COPY . .
+RUN chown -R appuser:appuser /app
+
 USER appuser
+
+ENV SERVICE_URL="https://api.example.com"
+
 EXPOSE 3000
+
 CMD ["node", "server.js"]
 ```
 
-### 시나리오 3: Java Spring Boot Maven 프로젝트
+### 시나리오 3: Java Spring Boot JAR 프로젝트
 
 **입력:**
 ```
 언어: Java
-프로젝트 타입: Maven 소스 프로젝트
-빌드 도구: Maven
-런타임 버전: 17
+JAR 파일 업로드: my-spring-app-2.0.0.jar
+Base Image: eclipse-temurin:17-jre-alpine
 포트: 8080
+서비스 URL: https://api.example.com
+실행 명령어: java -jar app.jar
 JVM 옵션: -Xmx1024m
 ```
 
 **생성되는 Dockerfile:**
 ```dockerfile
-# Stage 1: Build
-FROM maven:3.9-eclipse-temurin-17-alpine AS build
-WORKDIR /app
-COPY pom.xml .
-RUN mvn dependency:go-offline -B
-COPY src ./src
-RUN mvn clean package -DskipTests
+# Spring Boot JAR Application Dockerfile
+# Generated by Dockerfile Generator
 
-# Stage 2: Runtime
 FROM eclipse-temurin:17-jre-alpine AS runtime
+
+# Create non-root user
 RUN addgroup -S appuser && adduser -S appuser -G appuser
+
 WORKDIR /app
-COPY --from=build --chown=appuser /app/target/*.jar app.jar
+
+# Copy JAR file (실제 업로드한 파일명 반영)
+COPY --chown=appuser:appuser my-spring-app-2.0.0.jar app.jar
+
+# Switch to non-root user
 USER appuser
+
+# Set environment variables
+ENV SERVICE_URL="https://api.example.com"
+
+# Expose port
 EXPOSE 8080
-HEALTHCHECK --interval=30s --timeout=3s --start-period=40s \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1
-ENTRYPOINT ["java", "-Xmx1024m", "-jar", "app.jar"]
+
+# Run Spring Boot application (ENTRYPOINT 사용)
+ENTRYPOINT ["java", "-jar", "app.jar"]
 ```
 
 ---
@@ -687,5 +706,33 @@ GET /api/templates
 
 ---
 
-**Version**: 1.0.0
-**Last Updated**: 2025-02-04
+---
+
+## 최근 업데이트 (v1.1.0)
+
+### UI/UX 개선
+- ✅ Python/Node.js 워크플로우 단순화 (프레임워크 선택 제거)
+- ✅ 필수 설정 명확화 (Base Image, 포트, 서비스 URL, 실행 명령어)
+- ✅ 선택적 기능 체크박스화 (환경변수, Health Check, 시스템 의존성)
+- ✅ 실제 언어 로고 아이콘 표시 (폐쇄망 지원)
+- ✅ 선택된 언어 시각적 하이라이트
+- ✅ 언어별 맞춤형 플레이스홀더
+- ✅ 커스텀 알림 모달 (브라우저 alert 대체)
+- ✅ 재생성 버튼 및 확인 모달
+
+### Java 개선
+- ✅ Maven/Gradle 소스 프로젝트 옵션 제거 (JAR만 지원)
+- ✅ 런타임 버전 필드 제거
+- ✅ 업로드한 JAR 파일의 실제 파일명 자동 반영
+- ✅ Java 실행 명령어 ENTRYPOINT 방식으로 변경 (CMD → ENTRYPOINT)
+- ✅ Java 필수 필드 추가 (Base Image, 포트, 서비스 URL, 실행 명령어)
+
+### 기술적 개선
+- ✅ CMD 명령어 JSON 배열 형식으로 통일
+- ✅ 언어 전환 시 입력값 자동 초기화
+- ✅ 동적 JAR 파일명 처리
+
+---
+
+**Version**: 1.1.0
+**Last Updated**: 2025-02-05
