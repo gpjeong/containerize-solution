@@ -72,6 +72,16 @@ class DockerfileGenerator:
             }
         }
 
+        # For Java, check build tool to select correct template
+        if language == "java":
+            build_tool = config.get("build_tool", "jar")
+            if build_tool == "maven":
+                return "java/spring-boot-maven.dockerfile.j2"
+            elif build_tool == "gradle":
+                return "java/spring-boot-gradle.dockerfile.j2"
+            else:  # jar (pre-built)
+                return "java/spring-boot-jar.dockerfile.j2"
+
         template_path = template_map.get(language, {}).get(framework)
 
         if not template_path:

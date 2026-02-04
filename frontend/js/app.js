@@ -35,14 +35,30 @@ function selectLanguage(language) {
     document.getElementById('step-input').scrollIntoView({ behavior: 'smooth' });
 }
 
+// Toggle Java input type (JAR vs Source)
+function toggleJavaInput(type) {
+    if (type === 'jar') {
+        document.getElementById('java-jar-input').classList.remove('hidden');
+        document.getElementById('java-source-input').classList.add('hidden');
+    } else {
+        document.getElementById('java-jar-input').classList.add('hidden');
+        document.getElementById('java-source-input').classList.remove('hidden');
+    }
+}
+
 // Move to configuration step
 async function nextToConfig() {
     // For Java, check if file uploaded and analyze
     if (currentLanguage === 'java') {
-        const fileInput = document.getElementById('jarFile');
-        if (fileInput.files.length > 0) {
-            await uploadJavaFile(fileInput.files[0]);
+        const javaType = document.querySelector('input[name="javaType"]:checked').value;
+
+        if (javaType === 'jar') {
+            const fileInput = document.getElementById('jarFile');
+            if (fileInput.files.length > 0) {
+                await uploadJavaFile(fileInput.files[0]);
+            }
         }
+        // For source projects, data will be sent during generation
     }
 
     // Show config step
@@ -164,9 +180,21 @@ async function generateDockerfile() {
             config.start_command = config.custom_start_command || 'npm start';
         } else if (currentLanguage === 'java') {
             config.framework = 'spring-boot';
-            config.build_tool = 'jar';
+
+            const javaType = document.querySelector('input[name="javaType"]:checked').value;
+
+            if (javaType === 'jar') {
+                // JAR file (already uploaded)
+                config.build_tool = 'jar';
+                config.jar_file_name = 'app.jar';
+            } else {
+                // Source project (Maven/Gradle)
+                config.build_tool = document.getElementById('javaBuildTool').value;
+                config.build_file_content = document.getElementById('javaBuildFile').value || null;
+                config.main_class = document.getElementById('javaMainClass').value || null;
+            }
+
             config.jvm_options = '-Xmx512m';
-            config.jar_file_name = 'app.jar';
         }
 
         // Make API request

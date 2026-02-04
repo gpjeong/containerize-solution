@@ -67,11 +67,41 @@
         <div id="step-input" class="step hidden mt-8">
           <h2 class="text-2xl font-semibold mb-4">2. 프레임워크 및 설정</h2>
 
-          <!-- Java: File Upload -->
+          <!-- Java: File/Folder Upload -->
           <div id="input-java" class="input-section hidden">
             <div class="mb-4">
               <label class="block text-sm font-medium text-gray-700 mb-2">
-                JAR/WAR 파일 업로드 (선택사항)
+                프로젝트 타입 선택
+              </label>
+              <div class="flex gap-4 mb-4">
+                <label class="flex items-center">
+                  <input
+                    type="radio"
+                    name="javaType"
+                    value="jar"
+                    checked
+                    onchange="toggleJavaInput('jar')"
+                    class="mr-2"
+                  />
+                  빌드된 JAR/WAR 파일
+                </label>
+                <label class="flex items-center">
+                  <input
+                    type="radio"
+                    name="javaType"
+                    value="source"
+                    onchange="toggleJavaInput('source')"
+                    class="mr-2"
+                  />
+                  Maven/Gradle 소스 프로젝트
+                </label>
+              </div>
+            </div>
+
+            <!-- JAR File Upload -->
+            <div id="java-jar-input" class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                JAR/WAR 파일 업로드
               </label>
               <input
                 type="file"
@@ -80,8 +110,49 @@
                 class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
               />
               <p class="mt-1 text-sm text-gray-500">
-                빌드된 JAR 파일이 있다면 업로드하세요. 자동으로 분석됩니다.
+                빌드된 JAR 파일을 업로드하세요. 자동으로 분석됩니다.
               </p>
+            </div>
+
+            <!-- Source Project Input -->
+            <div id="java-source-input" class="mb-4 hidden">
+              <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  빌드 도구
+                </label>
+                <select
+                  id="javaBuildTool"
+                  class="w-full p-2 border border-gray-300 rounded-md"
+                >
+                  <option value="maven">Maven</option>
+                  <option value="gradle">Gradle</option>
+                </select>
+              </div>
+              <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  pom.xml 또는 build.gradle 내용 (선택사항)
+                </label>
+                <textarea
+                  id="javaBuildFile"
+                  rows="6"
+                  class="w-full p-2 border border-gray-300 rounded-md font-mono text-sm"
+                  placeholder="pom.xml 또는 build.gradle 내용을 붙여넣으세요"
+                ></textarea>
+                <p class="mt-1 text-sm text-gray-500">
+                  빌드 파일을 분석하여 의존성과 빌드 설정을 자동으로 감지합니다
+                </p>
+              </div>
+              <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Main Class (선택사항)
+                </label>
+                <input
+                  type="text"
+                  id="javaMainClass"
+                  class="w-full p-2 border border-gray-300 rounded-md"
+                  placeholder="예: com.example.Application"
+                />
+              </div>
             </div>
           </div>
 

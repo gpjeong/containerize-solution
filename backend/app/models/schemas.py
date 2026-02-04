@@ -85,6 +85,7 @@ class JavaConfig(BaseDockerConfig):
     jar_file_name: Optional[str] = None
     main_class: Optional[str] = None
     jvm_options: str = "-Xmx512m"
+    build_file_content: Optional[str] = None  # pom.xml or build.gradle content
 
     class Config:
         json_schema_extra = {
