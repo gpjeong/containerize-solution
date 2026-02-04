@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import time
 
-from app.config import ALLOWED_ORIGINS, LOG_LEVEL, FRONTEND_DIR
+from app.config import ALLOWED_ORIGINS, LOG_LEVEL, FRONTEND_DIR, STATIC_DIR
 from app.api import endpoints
 
 # Configure logging
@@ -65,10 +65,10 @@ async def health_check():
 
 # Serve frontend static files
 try:
-    app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
-    logger.info(f"Mounted static files from {FRONTEND_DIR}")
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+    logger.info(f"Mounted static files from {STATIC_DIR}")
 except RuntimeError:
-    logger.warning(f"Frontend directory not found: {FRONTEND_DIR}")
+    logger.warning(f"Static directory not found: {STATIC_DIR}")
 
 
 # Serve index.html at root

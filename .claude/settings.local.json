@@ -5,7 +5,8 @@
       "Bash(docker-compose up:*)",
       "Bash(chmod:*)",
       "Bash(docker build:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []

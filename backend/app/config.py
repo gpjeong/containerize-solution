@@ -11,11 +11,13 @@ if os.path.exists("/app/frontend"):
     UPLOAD_DIR = Path("/app/uploads")
     TEMPLATE_DIR = Path("/app/app/templates")
     FRONTEND_DIR = Path("/app/frontend")
+    STATIC_DIR = Path("/app/frontend/static")
 else:
     # Local development
     UPLOAD_DIR = BASE_DIR / "uploads"
     TEMPLATE_DIR = BASE_DIR / "backend" / "app" / "templates"
     FRONTEND_DIR = BASE_DIR / "frontend"
+    STATIC_DIR = BASE_DIR / "frontend" / "static"
 
 # File upload settings
 MAX_UPLOAD_SIZE = 500 * 1024 * 1024  # 500 MB
