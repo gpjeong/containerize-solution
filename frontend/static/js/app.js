@@ -37,6 +37,9 @@ function selectLanguage(language) {
         // Update step number
         document.getElementById('config-step-number').textContent = '2';
 
+        // Update placeholders based on language
+        updatePlaceholders(language);
+
         // Scroll to config section
         document.getElementById('step-config').scrollIntoView({ behavior: 'smooth' });
     }
@@ -55,6 +58,23 @@ function selectLanguage(language) {
 
         // Scroll to input section
         document.getElementById('step-input').scrollIntoView({ behavior: 'smooth' });
+    }
+}
+
+// Update placeholders based on selected language
+function updatePlaceholders(language) {
+    const baseImageInput = document.getElementById('baseImage');
+    const portInput = document.getElementById('port');
+    const startCommandInput = document.getElementById('startCommand');
+
+    if (language === 'python') {
+        baseImageInput.placeholder = '예: python:3.11-slim';
+        portInput.placeholder = '예: 8000';
+        startCommandInput.placeholder = '예: uvicorn main:app --host 0.0.0.0 --port 8000';
+    } else if (language === 'nodejs') {
+        baseImageInput.placeholder = '예: node:20-alpine';
+        portInput.placeholder = '예: 3000';
+        startCommandInput.placeholder = '예: node server.js';
     }
 }
 
