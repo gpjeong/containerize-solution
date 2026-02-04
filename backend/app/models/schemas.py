@@ -21,7 +21,7 @@ class BaseDockerConfig(BaseModel):
 class PythonConfig(BaseDockerConfig):
     """Python-specific configuration"""
     language: Literal["python"] = "python"
-    framework: Literal["fastapi", "flask", "django"]
+    framework: Literal["fastapi", "flask", "django", "generic"] = "generic"
     package_manager: Literal["pip", "poetry"] = "pip"
     server: Optional[Literal["uvicorn", "gunicorn"]] = None
     requirements_content: Optional[str] = None
@@ -49,7 +49,7 @@ class PythonConfig(BaseDockerConfig):
 class NodeJSConfig(BaseDockerConfig):
     """Node.js-specific configuration"""
     language: Literal["nodejs"] = "nodejs"
-    framework: Literal["express", "nestjs", "nextjs"]
+    framework: Literal["express", "nestjs", "nextjs", "generic"] = "generic"
     package_manager: Literal["npm", "yarn", "pnpm"] = "npm"
     package_json: Optional[Dict] = None
     build_command: Optional[str] = None

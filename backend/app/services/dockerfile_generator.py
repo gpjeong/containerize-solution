@@ -58,11 +58,13 @@ class DockerfileGenerator:
         # Map to template file
         template_map = {
             "python": {
+                "generic": "python/generic.dockerfile.j2",
                 "fastapi": "python/fastapi.dockerfile.j2",
                 "flask": "python/flask.dockerfile.j2",
                 "django": "python/django.dockerfile.j2",
             },
             "nodejs": {
+                "generic": "nodejs/generic.dockerfile.j2",
                 "express": "nodejs/express.dockerfile.j2",
                 "nestjs": "nodejs/nestjs.dockerfile.j2",
                 "nextjs": "nodejs/nextjs.dockerfile.j2",

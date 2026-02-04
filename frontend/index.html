@@ -37,22 +37,25 @@
           <h2 class="text-2xl font-semibold mb-4">1. 언어 선택</h2>
           <div class="grid grid-cols-3 gap-4">
             <button
+              id="lang-btn-python"
               onclick="selectLanguage('python')"
               class="lang-btn p-6 border-2 border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition"
             >
               <div class="text-4xl mb-2">🐍</div>
               <div class="font-semibold">Python</div>
-              <div class="text-sm text-gray-500">FastAPI, Flask, Django</div>
+              <div class="text-sm text-gray-500">웹 애플리케이션</div>
             </button>
             <button
+              id="lang-btn-nodejs"
               onclick="selectLanguage('nodejs')"
               class="lang-btn p-6 border-2 border-gray-300 rounded-lg hover:border-green-500 hover:bg-green-50 transition"
             >
               <div class="text-4xl mb-2">📗</div>
               <div class="font-semibold">Node.js</div>
-              <div class="text-sm text-gray-500">Express, NestJS, Next.js</div>
+              <div class="text-sm text-gray-500">웹 애플리케이션</div>
             </button>
             <button
+              id="lang-btn-java"
               onclick="selectLanguage('java')"
               class="lang-btn p-6 border-2 border-gray-300 rounded-lg hover:border-red-500 hover:bg-red-50 transition"
             >
@@ -63,9 +66,9 @@
           </div>
         </div>
 
-        <!-- Step 2: Framework & Input -->
+        <!-- Step 2: Java Input (Only for Java) -->
         <div id="step-input" class="step hidden mt-8">
-          <h2 class="text-2xl font-semibold mb-4">2. 프레임워크 및 설정</h2>
+          <h2 class="text-2xl font-semibold mb-4">2. 프로젝트 설정</h2>
 
           <!-- Java: File/Folder Upload -->
           <div id="input-java" class="input-section hidden">
@@ -156,62 +159,6 @@
             </div>
           </div>
 
-          <!-- Python: Framework & Requirements -->
-          <div id="input-python" class="input-section hidden">
-            <div class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-2"
-                >프레임워크</label
-              >
-              <select
-                id="pythonFramework"
-                class="w-full p-2 border border-gray-300 rounded-md"
-              >
-                <option value="fastapi">FastAPI</option>
-                <option value="flask">Flask</option>
-                <option value="django">Django</option>
-              </select>
-            </div>
-            <div class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-2"
-                >requirements.txt 내용 (선택사항)</label
-              >
-              <textarea
-                id="pythonRequirements"
-                rows="6"
-                class="w-full p-2 border border-gray-300 rounded-md font-mono text-sm"
-                placeholder="fastapi==0.115.0&#10;uvicorn[standard]==0.32.0&#10;pydantic==2.10.0"
-              ></textarea>
-            </div>
-          </div>
-
-          <!-- Node.js: Framework & package.json -->
-          <div id="input-nodejs" class="input-section hidden">
-            <div class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-2"
-                >프레임워크</label
-              >
-              <select
-                id="nodejsFramework"
-                class="w-full p-2 border border-gray-300 rounded-md"
-              >
-                <option value="express">Express</option>
-                <option value="nestjs">NestJS</option>
-                <option value="nextjs">Next.js</option>
-              </select>
-            </div>
-            <div class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-2"
-                >package.json 내용 (선택사항)</label
-              >
-              <textarea
-                id="nodejsPackageJson"
-                rows="6"
-                class="w-full p-2 border border-gray-300 rounded-md font-mono text-sm"
-                placeholder='{"dependencies": {"express": "^4.18.0"}}'
-              ></textarea>
-            </div>
-          </div>
-
           <button
             onclick="nextToConfig()"
             class="mt-4 px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
@@ -220,111 +167,189 @@
           </button>
         </div>
 
-        <!-- Step 3: Configuration -->
+        <!-- Step 2/3: Configuration -->
         <div id="step-config" class="step hidden mt-8">
-          <h2 class="text-2xl font-semibold mb-4">3. Docker 설정</h2>
+          <h2 class="text-2xl font-semibold mb-4">
+            <span id="config-step-number">2</span>. Docker 설정
+          </h2>
 
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2"
-                >런타임 버전</label
-              >
+          <!-- Python/Node.js 필수 필드 -->
+          <div id="simple-lang-fields" class="hidden">
+            <div class="mt-4">
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                Base Image <span class="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                id="baseImage"
+                required
+                class="w-full p-2 border border-gray-300 rounded-md"
+                placeholder="예: python:3.11-slim, node:20-alpine"
+              />
+              <p class="mt-1 text-sm text-gray-500">
+                사용할 Docker 베이스 이미지를 입력하세요
+              </p>
+            </div>
+
+            <div class="mt-4">
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                포트 <span class="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                id="port"
+                required
+                class="w-full p-2 border border-gray-300 rounded-md"
+                placeholder="예: 8000, 3000"
+              />
+            </div>
+
+            <div class="mt-4">
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                서비스 URL <span class="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                id="serviceUrl"
+                required
+                class="w-full p-2 border border-gray-300 rounded-md"
+                placeholder="예: https://api.example.com"
+              />
+              <p class="mt-1 text-sm text-gray-500">
+                서비스가 배포될 URL을 입력하세요
+              </p>
+            </div>
+
+            <div class="mt-4">
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                실행 명령어 <span class="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                id="startCommand"
+                required
+                class="w-full p-2 border border-gray-300 rounded-md"
+                placeholder="예: uvicorn main:app --host 0.0.0.0 --port 8000"
+              />
+              <p class="mt-1 text-sm text-gray-500">
+                컨테이너 실행 명령어를 입력하세요
+              </p>
+            </div>
+          </div>
+
+          <!-- Java 필드 -->
+          <div id="java-lang-fields" class="hidden">
+            <div class="mt-4">
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                런타임 버전
+              </label>
               <input
                 type="text"
                 id="runtimeVersion"
                 class="w-full p-2 border border-gray-300 rounded-md"
-                placeholder="예: 3.11, 20, 17"
+                placeholder="예: 17"
               />
             </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2"
-                >포트</label
-              >
+
+            <div class="mt-4">
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                포트
+              </label>
               <input
                 type="number"
-                id="port"
-                value="8000"
+                id="javaPort"
+                value="8080"
+                class="w-full p-2 border border-gray-300 rounded-md"
+              />
+            </div>
+
+            <div class="mt-4">
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                Base Image (선택사항)
+              </label>
+              <input
+                type="text"
+                id="javaBaseImage"
+                class="w-full p-2 border border-gray-300 rounded-md"
+                placeholder="비워두면 자동으로 선택됩니다"
+              />
+            </div>
+          </div>
+
+          <!-- 공통 선택 필드 -->
+          <div class="mt-4">
+            <label class="flex items-center mb-2">
+              <input
+                type="checkbox"
+                id="enableEnvVars"
+                onchange="toggleEnvVars()"
+                class="mr-2"
+              />
+              <span class="text-sm font-medium text-gray-700">
+                환경 변수 추가
+              </span>
+            </label>
+            <div id="envVarsInput" class="hidden">
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                환경 변수 (KEY=VALUE, 한 줄에 하나씩)
+              </label>
+              <textarea
+                id="envVars"
+                rows="3"
+                class="w-full p-2 border border-gray-300 rounded-md font-mono text-sm"
+                placeholder="ENV=production&#10;DEBUG=false"
+              ></textarea>
+            </div>
+          </div>
+
+          <div class="mt-4">
+            <label class="flex items-center mb-2">
+              <input
+                type="checkbox"
+                id="enableHealthCheck"
+                onchange="toggleHealthCheck()"
+                class="mr-2"
+              />
+              <span class="text-sm font-medium text-gray-700">
+                Health Check 추가
+              </span>
+            </label>
+            <div id="healthCheckInput" class="hidden">
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                Health Check 경로
+              </label>
+              <input
+                type="text"
+                id="healthCheck"
+                value="/health"
                 class="w-full p-2 border border-gray-300 rounded-md"
               />
             </div>
           </div>
 
           <div class="mt-4">
-            <label class="block text-sm font-medium text-gray-700 mb-2"
-              >환경 변수 (KEY=VALUE, 한 줄에 하나씩)</label
-            >
-            <textarea
-              id="envVars"
-              rows="3"
-              class="w-full p-2 border border-gray-300 rounded-md font-mono text-sm"
-              placeholder="ENV=production&#10;DEBUG=false"
-            ></textarea>
-          </div>
-
-          <div class="mt-4">
-            <label class="block text-sm font-medium text-gray-700 mb-2"
-              >Health Check 경로</label
-            >
-            <input
-              type="text"
-              id="healthCheck"
-              value="/health"
-              class="w-full p-2 border border-gray-300 rounded-md"
-            />
-          </div>
-
-          <div class="mt-4">
-            <label class="block text-sm font-medium text-gray-700 mb-2"
-              >시스템 의존성 패키지 (공백으로 구분)</label
-            >
-            <input
-              type="text"
-              id="systemDeps"
-              class="w-full p-2 border border-gray-300 rounded-md"
-              placeholder="예: curl wget"
-            />
-          </div>
-
-          <div class="mt-4">
-            <label class="block text-sm font-medium text-gray-700 mb-2"
-              >Base Image (선택사항)</label
-            >
-            <input
-              type="text"
-              id="baseImage"
-              class="w-full p-2 border border-gray-300 rounded-md"
-              placeholder="비워두면 자동으로 선택됩니다"
-            />
-          </div>
-
-          <div class="mt-4">
-            <label class="block text-sm font-medium text-gray-700 mb-2"
-              >서비스 URL (선택사항)</label
-            >
-            <input
-              type="text"
-              id="serviceUrl"
-              class="w-full p-2 border border-gray-300 rounded-md"
-              placeholder="예: https://api.example.com"
-            />
-            <p class="mt-1 text-sm text-gray-500">
-              서비스가 외부 API를 호출하는 경우 URL을 입력하세요
-            </p>
-          </div>
-
-          <div class="mt-4">
-            <label class="block text-sm font-medium text-gray-700 mb-2"
-              >실행 명령어 (선택사항)</label
-            >
-            <input
-              type="text"
-              id="startCommand"
-              class="w-full p-2 border border-gray-300 rounded-md"
-              placeholder="예: python main.py 또는 node server.js"
-            />
-            <p class="mt-1 text-sm text-gray-500">
-              기본값 대신 사용할 커스텀 실행 명령어
-            </p>
+            <label class="flex items-center mb-2">
+              <input
+                type="checkbox"
+                id="enableSystemDeps"
+                onchange="toggleSystemDeps()"
+                class="mr-2"
+              />
+              <span class="text-sm font-medium text-gray-700">
+                시스템 의존성 패키지 추가
+              </span>
+            </label>
+            <div id="systemDepsInput" class="hidden">
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                시스템 의존성 패키지 (공백으로 구분)
+              </label>
+              <input
+                type="text"
+                id="systemDeps"
+                class="w-full p-2 border border-gray-300 rounded-md"
+                placeholder="예: curl wget"
+              />
+            </div>
           </div>
 
           <button
@@ -357,10 +382,11 @@
               클립보드에 복사
             </button>
             <button
-              onclick="resetForm()"
-              class="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition"
+              onclick="showResetConfirmation()"
+              class="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition flex items-center gap-2"
             >
-              처음부터 다시
+              <span>🔄</span>
+              <span>Dockerfile 재생성</span>
             </button>
           </div>
         </div>
@@ -375,6 +401,40 @@
               class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"
             ></div>
             <p class="mt-4 text-gray-700">처리 중...</p>
+          </div>
+        </div>
+
+        <!-- Reset Confirmation Modal -->
+        <div
+          id="resetConfirmModal"
+          class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+        >
+          <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div class="p-6">
+              <div class="flex items-center justify-center mb-4">
+                <div class="text-5xl">🔄</div>
+              </div>
+              <h3 class="text-xl font-semibold text-gray-800 text-center mb-2">
+                Dockerfile 재생성
+              </h3>
+              <p class="text-gray-600 text-center mb-6">
+                Dockerfile을 재생성하시겠습니까?
+              </p>
+              <div class="flex gap-3">
+                <button
+                  onclick="cancelReset()"
+                  class="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition"
+                >
+                  취소
+                </button>
+                <button
+                  onclick="confirmReset()"
+                  class="flex-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition"
+                >
+                  재생성
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>

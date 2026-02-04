@@ -16,23 +16,107 @@ function hideLoading() {
 function selectLanguage(language) {
     currentLanguage = language;
 
-    // Hide config and preview steps (in case user is changing language)
-    document.getElementById('step-config').classList.add('hidden');
+    // Hide preview step
     document.getElementById('step-preview').classList.add('hidden');
 
-    // Show input step
-    document.getElementById('step-input').classList.remove('hidden');
+    // Reset all input fields
+    resetInputFields();
 
-    // Hide all input sections
-    document.querySelectorAll('.input-section').forEach(el => {
-        el.classList.add('hidden');
-    });
+    // Update language button styles
+    updateLanguageButtonStyles(language);
 
-    // Show relevant input section
-    document.getElementById(`input-${language}`).classList.remove('hidden');
+    // For Python/Node.js: skip input step and go directly to config
+    if (language === 'python' || language === 'nodejs') {
+        document.getElementById('step-input').classList.add('hidden');
+        document.getElementById('step-config').classList.remove('hidden');
 
-    // Scroll to input section
-    document.getElementById('step-input').scrollIntoView({ behavior: 'smooth' });
+        // Show simple language fields, hide Java fields
+        document.getElementById('simple-lang-fields').classList.remove('hidden');
+        document.getElementById('java-lang-fields').classList.add('hidden');
+
+        // Update step number
+        document.getElementById('config-step-number').textContent = '2';
+
+        // Scroll to config section
+        document.getElementById('step-config').scrollIntoView({ behavior: 'smooth' });
+    }
+    // For Java: show input step
+    else if (language === 'java') {
+        document.getElementById('step-input').classList.remove('hidden');
+        document.getElementById('step-config').classList.add('hidden');
+
+        // Hide all input sections first
+        document.querySelectorAll('.input-section').forEach(el => {
+            el.classList.add('hidden');
+        });
+
+        // Show Java input section
+        document.getElementById('input-java').classList.remove('hidden');
+
+        // Scroll to input section
+        document.getElementById('step-input').scrollIntoView({ behavior: 'smooth' });
+    }
+}
+
+// Update language button styles to show selected state
+function updateLanguageButtonStyles(selectedLanguage) {
+    // Reset all buttons to default state
+    const pythonBtn = document.getElementById('lang-btn-python');
+    const nodejsBtn = document.getElementById('lang-btn-nodejs');
+    const javaBtn = document.getElementById('lang-btn-java');
+
+    // Remove active classes from all buttons
+    pythonBtn.className = 'lang-btn p-6 border-2 border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition';
+    nodejsBtn.className = 'lang-btn p-6 border-2 border-gray-300 rounded-lg hover:border-green-500 hover:bg-green-50 transition';
+    javaBtn.className = 'lang-btn p-6 border-2 border-gray-300 rounded-lg hover:border-red-500 hover:bg-red-50 transition';
+
+    // Add active class to selected button
+    if (selectedLanguage === 'python') {
+        pythonBtn.className = 'lang-btn p-6 border-2 border-blue-500 bg-blue-50 rounded-lg transition';
+    } else if (selectedLanguage === 'nodejs') {
+        nodejsBtn.className = 'lang-btn p-6 border-2 border-green-500 bg-green-50 rounded-lg transition';
+    } else if (selectedLanguage === 'java') {
+        javaBtn.className = 'lang-btn p-6 border-2 border-red-500 bg-red-50 rounded-lg transition';
+    }
+}
+
+// Reset all input fields
+function resetInputFields() {
+    // Python/Node.js fields
+    document.getElementById('baseImage').value = '';
+    document.getElementById('port').value = '';
+    document.getElementById('serviceUrl').value = '';
+    document.getElementById('startCommand').value = '';
+
+    // Java fields
+    document.getElementById('runtimeVersion').value = '';
+    document.getElementById('javaPort').value = '8080';
+    document.getElementById('javaBaseImage').value = '';
+    document.getElementById('jarFile').value = '';
+    document.getElementById('javaBuildFile').value = '';
+    document.getElementById('javaMainClass').value = '';
+
+    // Common optional fields
+    document.getElementById('envVars').value = '';
+    document.getElementById('healthCheck').value = '/health';
+    document.getElementById('systemDeps').value = '';
+
+    // Reset checkboxes and hide inputs
+    document.getElementById('enableEnvVars').checked = false;
+    document.getElementById('envVarsInput').classList.add('hidden');
+
+    document.getElementById('enableHealthCheck').checked = false;
+    document.getElementById('healthCheckInput').classList.add('hidden');
+
+    document.getElementById('enableSystemDeps').checked = false;
+    document.getElementById('systemDepsInput').classList.add('hidden');
+
+    // Reset Java type radio to JAR
+    const jarRadio = document.querySelector('input[name="javaType"][value="jar"]');
+    if (jarRadio) {
+        jarRadio.checked = true;
+        toggleJavaInput('jar');
+    }
 }
 
 // Toggle Java input type (JAR vs Source)
@@ -46,9 +130,45 @@ function toggleJavaInput(type) {
     }
 }
 
-// Move to configuration step
+// Toggle Environment Variables input
+function toggleEnvVars() {
+    const checkbox = document.getElementById('enableEnvVars');
+    const input = document.getElementById('envVarsInput');
+
+    if (checkbox.checked) {
+        input.classList.remove('hidden');
+    } else {
+        input.classList.add('hidden');
+    }
+}
+
+// Toggle Health Check input
+function toggleHealthCheck() {
+    const checkbox = document.getElementById('enableHealthCheck');
+    const input = document.getElementById('healthCheckInput');
+
+    if (checkbox.checked) {
+        input.classList.remove('hidden');
+    } else {
+        input.classList.add('hidden');
+    }
+}
+
+// Toggle System Dependencies input
+function toggleSystemDeps() {
+    const checkbox = document.getElementById('enableSystemDeps');
+    const input = document.getElementById('systemDepsInput');
+
+    if (checkbox.checked) {
+        input.classList.remove('hidden');
+    } else {
+        input.classList.add('hidden');
+    }
+}
+
+// Move to configuration step (Java only)
 async function nextToConfig() {
-    // For Java, check if file uploaded and analyze
+    // Only for Java - check if file uploaded and analyze
     if (currentLanguage === 'java') {
         const javaType = document.querySelector('input[name="javaType"]:checked').value;
 
@@ -63,25 +183,26 @@ async function nextToConfig() {
 
     // Show config step
     document.getElementById('step-config').classList.remove('hidden');
+
+    // Show Java fields, hide simple fields
+    document.getElementById('java-lang-fields').classList.remove('hidden');
+    document.getElementById('simple-lang-fields').classList.add('hidden');
+
+    // Update step number
+    document.getElementById('config-step-number').textContent = '3';
+
     document.getElementById('step-config').scrollIntoView({ behavior: 'smooth' });
 
-    // Set default runtime version based on language
+    // Set default runtime version for Java
     const versionInput = document.getElementById('runtimeVersion');
     if (!versionInput.value) {
-        const defaults = {
-            'python': '3.11',
-            'nodejs': '20',
-            'java': '17'
-        };
-        versionInput.value = defaults[currentLanguage];
+        versionInput.value = '17';
     }
 
-    // Set default port
-    const portInput = document.getElementById('port');
-    if (currentLanguage === 'nodejs' && portInput.value === '8000') {
-        portInput.value = '3000';
-    } else if (currentLanguage === 'java' && portInput.value === '8000') {
-        portInput.value = '8080';
+    // Set default port for Java
+    const javaPortInput = document.getElementById('javaPort');
+    if (!javaPortInput.value || javaPortInput.value === '8000') {
+        javaPortInput.value = '8080';
     }
 }
 
@@ -139,47 +260,101 @@ function parseSystemDeps(depsText) {
     return depsText.trim().split(/\s+/).filter(d => d);
 }
 
+// Validate required fields for Python/Node.js
+function validateSimpleLanguageFields() {
+    const baseImage = document.getElementById('baseImage').value.trim();
+    const port = document.getElementById('port').value.trim();
+    const serviceUrl = document.getElementById('serviceUrl').value.trim();
+    const startCommand = document.getElementById('startCommand').value.trim();
+
+    if (!baseImage) {
+        alert('Base Image를 입력해주세요.');
+        return false;
+    }
+
+    if (!port) {
+        alert('포트를 입력해주세요.');
+        return false;
+    }
+
+    if (!serviceUrl) {
+        alert('서비스 URL을 입력해주세요.');
+        return false;
+    }
+
+    if (!startCommand) {
+        alert('실행 명령어를 입력해주세요.');
+        return false;
+    }
+
+    return true;
+}
+
 // Generate Dockerfile
 async function generateDockerfile() {
     showLoading();
 
     try {
-        // Build configuration based on language
-        const config = {
-            language: currentLanguage,
-            runtime_version: document.getElementById('runtimeVersion').value,
-            port: parseInt(document.getElementById('port').value),
-            environment_vars: parseEnvVars(document.getElementById('envVars').value),
-            health_check_path: document.getElementById('healthCheck').value,
-            system_dependencies: parseSystemDeps(document.getElementById('systemDeps').value),
-            base_image: document.getElementById('baseImage').value || null,
-            user: 'appuser',
-            service_url: document.getElementById('serviceUrl').value || null,
-            custom_start_command: document.getElementById('startCommand').value || null
-        };
+        let config;
 
-        // Add language-specific config
-        if (currentLanguage === 'python') {
-            config.framework = document.getElementById('pythonFramework').value;
-            config.requirements_content = document.getElementById('pythonRequirements').value || null;
-            config.package_manager = 'pip';
-            config.entrypoint_file = 'main.py';
-        } else if (currentLanguage === 'nodejs') {
-            config.framework = document.getElementById('nodejsFramework').value;
-            const packageJsonText = document.getElementById('nodejsPackageJson').value;
-            if (packageJsonText) {
-                try {
-                    config.package_json = JSON.parse(packageJsonText);
-                } catch (e) {
-                    alert('package.json 형식이 올바르지 않습니다.');
-                    hideLoading();
-                    return;
-                }
+        // Build configuration based on language
+        if (currentLanguage === 'python' || currentLanguage === 'nodejs') {
+            // Validate required fields
+            if (!validateSimpleLanguageFields()) {
+                hideLoading();
+                return;
             }
-            config.package_manager = 'npm';
-            config.start_command = config.custom_start_command || 'npm start';
+
+            // Build config for Python/Node.js
+            const enableEnvVars = document.getElementById('enableEnvVars').checked;
+            const enableHealthCheck = document.getElementById('enableHealthCheck').checked;
+            const enableSystemDeps = document.getElementById('enableSystemDeps').checked;
+
+            config = {
+                language: currentLanguage,
+                framework: 'generic',  // Use generic framework
+                runtime_version: '',  // Not needed for simple languages
+                port: parseInt(document.getElementById('port').value),
+                environment_vars: enableEnvVars ? parseEnvVars(document.getElementById('envVars').value) : {},
+                health_check_path: enableHealthCheck ? document.getElementById('healthCheck').value : null,
+                system_dependencies: enableSystemDeps ? parseSystemDeps(document.getElementById('systemDeps').value) : [],
+                base_image: document.getElementById('baseImage').value,
+                user: 'appuser',
+                service_url: document.getElementById('serviceUrl').value,
+                custom_start_command: document.getElementById('startCommand').value
+            };
+
+            // Add language-specific defaults
+            if (currentLanguage === 'python') {
+                config.package_manager = 'pip';
+                config.entrypoint_file = 'main.py';
+            } else if (currentLanguage === 'nodejs') {
+                config.package_manager = 'npm';
+                config.start_command = config.custom_start_command;
+            }
+
         } else if (currentLanguage === 'java') {
-            config.framework = 'spring-boot';
+            // Build config for Java
+            const runtimeVersion = document.getElementById('runtimeVersion').value;
+            const javaPort = parseInt(document.getElementById('javaPort').value);
+            const javaBaseImage = document.getElementById('javaBaseImage').value;
+            const enableEnvVars = document.getElementById('enableEnvVars').checked;
+            const enableHealthCheck = document.getElementById('enableHealthCheck').checked;
+            const enableSystemDeps = document.getElementById('enableSystemDeps').checked;
+
+            config = {
+                language: currentLanguage,
+                framework: 'spring-boot',
+                runtime_version: runtimeVersion || '17',
+                port: javaPort || 8080,
+                environment_vars: enableEnvVars ? parseEnvVars(document.getElementById('envVars').value) : {},
+                health_check_path: enableHealthCheck ? document.getElementById('healthCheck').value : null,
+                system_dependencies: enableSystemDeps ? parseSystemDeps(document.getElementById('systemDeps').value) : [],
+                base_image: javaBaseImage || null,
+                user: 'appuser',
+                service_url: document.getElementById('serviceUrl').value || null,
+                custom_start_command: document.getElementById('startCommand').value || null
+            };
 
             const javaType = document.querySelector('input[name="javaType"]:checked').value;
 
@@ -295,11 +470,20 @@ function copyToClipboard() {
     });
 }
 
-// Reset form
-function resetForm() {
-    if (!confirm('처음부터 다시 시작하시겠습니까?')) {
-        return;
-    }
+// Show reset confirmation modal
+function showResetConfirmation() {
+    document.getElementById('resetConfirmModal').classList.remove('hidden');
+}
+
+// Cancel reset
+function cancelReset() {
+    document.getElementById('resetConfirmModal').classList.add('hidden');
+}
+
+// Confirm reset
+function confirmReset() {
+    // Hide modal
+    document.getElementById('resetConfirmModal').classList.add('hidden');
 
     // Reset state
     currentLanguage = null;
@@ -312,16 +496,44 @@ function resetForm() {
 
     // Clear all inputs
     document.getElementById('runtimeVersion').value = '';
-    document.getElementById('port').value = '8000';
+    document.getElementById('javaPort').value = '8080';
+    document.getElementById('javaBaseImage').value = '';
+    document.getElementById('baseImage').value = '';
+    document.getElementById('port').value = '';
+    document.getElementById('serviceUrl').value = '';
+    document.getElementById('startCommand').value = '';
     document.getElementById('envVars').value = '';
     document.getElementById('healthCheck').value = '/health';
     document.getElementById('systemDeps').value = '';
-    document.getElementById('baseImage').value = '';
 
-    document.getElementById('pythonRequirements').value = '';
-    document.getElementById('nodejsPackageJson').value = '';
     document.getElementById('jarFile').value = '';
+    document.getElementById('javaBuildFile').value = '';
+    document.getElementById('javaMainClass').value = '';
+
+    // Reset checkboxes and hide inputs
+    document.getElementById('enableEnvVars').checked = false;
+    document.getElementById('envVarsInput').classList.add('hidden');
+
+    document.getElementById('enableHealthCheck').checked = false;
+    document.getElementById('healthCheckInput').classList.add('hidden');
+
+    document.getElementById('enableSystemDeps').checked = false;
+    document.getElementById('systemDepsInput').classList.add('hidden');
+
+    // Reset language button styles
+    const pythonBtn = document.getElementById('lang-btn-python');
+    const nodejsBtn = document.getElementById('lang-btn-nodejs');
+    const javaBtn = document.getElementById('lang-btn-java');
+
+    if (pythonBtn) pythonBtn.className = 'lang-btn p-6 border-2 border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition';
+    if (nodejsBtn) nodejsBtn.className = 'lang-btn p-6 border-2 border-gray-300 rounded-lg hover:border-green-500 hover:bg-green-50 transition';
+    if (javaBtn) javaBtn.className = 'lang-btn p-6 border-2 border-gray-300 rounded-lg hover:border-red-500 hover:bg-red-50 transition';
 
     // Scroll to top
     window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Legacy function (kept for compatibility)
+function resetForm() {
+    showResetConfirmation();
 }

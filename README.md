@@ -5,16 +5,19 @@
 ## 지원하는 기술 스택
 
 ### Python
+
 - FastAPI (uvicorn)
 - Flask (gunicorn)
 - Django (gunicorn)
 
 ### Node.js
+
 - Express
 - NestJS
 - Next.js
 
 ### Java
+
 - Spring Boot (JAR)
 
 ## 주요 기능
@@ -60,14 +63,17 @@ docker-compose up --build
 ## 사용 방법
 
 ### 1. 언어 선택
+
 Python, Node.js, Java 중 선택
 
 ### 2. 프레임워크 및 입력
+
 - **Java**: JAR 파일 업로드 (선택사항)
 - **Python**: 프레임워크 선택 및 requirements.txt 내용 입력
 - **Node.js**: 프레임워크 선택 및 package.json 내용 입력
 
 ### 3. Docker 설정
+
 - 런타임 버전 (예: Python 3.11, Node 20, Java 17)
 - 포트 번호
 - 환경 변수
@@ -76,6 +82,7 @@ Python, Node.js, Java 중 선택
 - Base Image (선택사항)
 
 ### 4. 생성 및 다운로드
+
 - Dockerfile 생성
 - CodeMirror 에디터로 미리보기 및 편집
 - 다운로드 또는 클립보드에 복사
@@ -83,24 +90,31 @@ Python, Node.js, Java 중 선택
 ## API 엔드포인트
 
 ### `POST /api/upload/java`
+
 JAR/WAR 파일 업로드 및 분석
 
 ### `POST /api/analyze/python`
+
 Python 프로젝트 설정 분석
 
 ### `POST /api/analyze/nodejs`
+
 Node.js 프로젝트 설정 분석
 
 ### `POST /api/generate`
+
 Dockerfile 생성
 
 ### `GET /api/download/{session_id}`
+
 생성된 Dockerfile 다운로드
 
 ### `GET /api/templates`
+
 지원하는 템플릿 목록 조회
 
 ### `GET /api/docs`
+
 자동 생성된 API 문서 (Swagger UI)
 
 ## 프로젝트 구조
