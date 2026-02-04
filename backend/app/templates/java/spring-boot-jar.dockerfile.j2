@@ -40,7 +40,7 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=40s \
 
 # Run Spring Boot application
 {% if custom_start_command %}
-CMD [{{ custom_start_command.split() | map('tojson') | join(', ') }}]
+ENTRYPOINT [{{ custom_start_command.split() | map('tojson') | join(', ') }}]
 {% else %}
 ENTRYPOINT ["java", {{ jvm_options | split_jvm_options | map('tojson') | join(', ') }}, "-jar", "app.jar"]
 {% endif %}
