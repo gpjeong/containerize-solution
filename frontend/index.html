@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+      WebApp Dockerfile Generator - 웹 서비스용 Dockerfile 자동 생성
+    </title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/monokai.min.css"
+    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/dockerfile/dockerfile.min.js"></script>
+  </head>
+  <body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+      <!-- Header -->
+      <header class="mb-8">
+        <h1 class="text-4xl font-bold text-gray-800 mb-2">
+          WebApp Dockerfile Generator
+        </h1>
+        <p class="text-gray-600">
+          웹 서비스용 Dockerfile을 자동으로 생성합니다
+        </p>
+      </header>
+
+      <!-- Main Content -->
+      <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+        <!-- Step 1: Language Selection -->
+        <div id="step-language" class="step">
+          <h2 class="text-2xl font-semibold mb-4">1. 언어 선택</h2>
+          <div class="grid grid-cols-3 gap-4">
+            <button
+              onclick="selectLanguage('python')"
+              class="lang-btn p-6 border-2 border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition"
+            >
+              <div class="text-4xl mb-2">🐍</div>
+              <div class="font-semibold">Python</div>
+              <div class="text-sm text-gray-500">FastAPI, Flask, Django</div>
+            </button>
+            <button
+              onclick="selectLanguage('nodejs')"
+              class="lang-btn p-6 border-2 border-gray-300 rounded-lg hover:border-green-500 hover:bg-green-50 transition"
+            >
+              <div class="text-4xl mb-2">📗</div>
+              <div class="font-semibold">Node.js</div>
+              <div class="text-sm text-gray-500">Express, NestJS, Next.js</div>
+            </button>
+            <button
+              onclick="selectLanguage('java')"
+              class="lang-btn p-6 border-2 border-gray-300 rounded-lg hover:border-red-500 hover:bg-red-50 transition"
+            >
+              <div class="text-4xl mb-2">☕</div>
+              <div class="font-semibold">Java</div>
+              <div class="text-sm text-gray-500">Spring Boot</div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 2: Framework & Input -->
+        <div id="step-input" class="step hidden mt-8">
+          <h2 class="text-2xl font-semibold mb-4">2. 프레임워크 및 설정</h2>
+
+          <!-- Java: File Upload -->
+          <div id="input-java" class="input-section hidden">
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                JAR/WAR 파일 업로드 (선택사항)
+              </label>
+              <input
+                type="file"
+                id="jarFile"
+                accept=".jar,.war"
+                class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+              />
+              <p class="mt-1 text-sm text-gray-500">
+                빌드된 JAR 파일이 있다면 업로드하세요. 자동으로 분석됩니다.
+              </p>
+            </div>
+          </div>
+
+          <!-- Python: Framework & Requirements -->
+          <div id="input-python" class="input-section hidden">
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-2"
+                >프레임워크</label
+              >
+              <select
+                id="pythonFramework"
+                class="w-full p-2 border border-gray-300 rounded-md"
+              >
+                <option value="fastapi">FastAPI</option>
+                <option value="flask">Flask</option>
+                <option value="django">Django</option>
+              </select>
+            </div>
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-2"
+                >requirements.txt 내용 (선택사항)</label
+              >
+              <textarea
+                id="pythonRequirements"
+                rows="6"
+                class="w-full p-2 border border-gray-300 rounded-md font-mono text-sm"
+                placeholder="fastapi==0.115.0&#10;uvicorn[standard]==0.32.0&#10;pydantic==2.10.0"
+              ></textarea>
+            </div>
+          </div>
+
+          <!-- Node.js: Framework & package.json -->
+          <div id="input-nodejs" class="input-section hidden">
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-2"
+                >프레임워크</label
+              >
+              <select
+                id="nodejsFramework"
+                class="w-full p-2 border border-gray-300 rounded-md"
+              >
+                <option value="express">Express</option>
+                <option value="nestjs">NestJS</option>
+                <option value="nextjs">Next.js</option>
+              </select>
+            </div>
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-2"
+                >package.json 내용 (선택사항)</label
+              >
+              <textarea
+                id="nodejsPackageJson"
+                rows="6"
+                class="w-full p-2 border border-gray-300 rounded-md font-mono text-sm"
+                placeholder='{"dependencies": {"express": "^4.18.0"}}'
+              ></textarea>
+            </div>
+          </div>
+
+          <button
+            onclick="nextToConfig()"
+            class="mt-4 px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+          >
+            다음 단계
+          </button>
+        </div>
+
+        <!-- Step 3: Configuration -->
+        <div id="step-config" class="step hidden mt-8">
+          <h2 class="text-2xl font-semibold mb-4">3. Docker 설정</h2>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2"
+                >런타임 버전</label
+              >
+              <input
+                type="text"
+                id="runtimeVersion"
+                class="w-full p-2 border border-gray-300 rounded-md"
+                placeholder="예: 3.11, 20, 17"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2"
+                >포트</label
+              >
+              <input
+                type="number"
+                id="port"
+                value="8000"
+                class="w-full p-2 border border-gray-300 rounded-md"
+              />
+            </div>
+          </div>
+
+          <div class="mt-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2"
+              >환경 변수 (KEY=VALUE, 한 줄에 하나씩)</label
+            >
+            <textarea
+              id="envVars"
+              rows="3"
+              class="w-full p-2 border border-gray-300 rounded-md font-mono text-sm"
+              placeholder="ENV=production&#10;DEBUG=false"
+            ></textarea>
+          </div>
+
+          <div class="mt-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2"
+              >Health Check 경로</label
+            >
+            <input
+              type="text"
+              id="healthCheck"
+              value="/health"
+              class="w-full p-2 border border-gray-300 rounded-md"
+            />
+          </div>
+
+          <div class="mt-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2"
+              >시스템 의존성 패키지 (공백으로 구분)</label
+            >
+            <input
+              type="text"
+              id="systemDeps"
+              class="w-full p-2 border border-gray-300 rounded-md"
+              placeholder="예: curl wget"
+            />
+          </div>
+
+          <div class="mt-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2"
+              >Base Image (선택사항)</label
+            >
+            <input
+              type="text"
+              id="baseImage"
+              class="w-full p-2 border border-gray-300 rounded-md"
+              placeholder="비워두면 자동으로 선택됩니다"
+            />
+          </div>
+
+          <div class="mt-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2"
+              >서비스 URL (선택사항)</label
+            >
+            <input
+              type="text"
+              id="serviceUrl"
+              class="w-full p-2 border border-gray-300 rounded-md"
+              placeholder="예: https://api.example.com"
+            />
+            <p class="mt-1 text-sm text-gray-500">
+              서비스가 외부 API를 호출하는 경우 URL을 입력하세요
+            </p>
+          </div>
+
+          <div class="mt-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2"
+              >실행 명령어 (선택사항)</label
+            >
+            <input
+              type="text"
+              id="startCommand"
+              class="w-full p-2 border border-gray-300 rounded-md"
+              placeholder="예: python main.py 또는 node server.js"
+            />
+            <p class="mt-1 text-sm text-gray-500">
+              기본값 대신 사용할 커스텀 실행 명령어
+            </p>
+          </div>
+
+          <button
+            onclick="generateDockerfile()"
+            class="mt-6 px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition"
+          >
+            Dockerfile 생성
+          </button>
+        </div>
+
+        <!-- Step 4: Preview & Download -->
+        <div id="step-preview" class="step hidden mt-8">
+          <h2 class="text-2xl font-semibold mb-4">4. Dockerfile 미리보기</h2>
+
+          <div class="mb-4">
+            <textarea id="dockerfileEditor"></textarea>
+          </div>
+
+          <div class="flex gap-4">
+            <button
+              onclick="downloadDockerfile()"
+              class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+            >
+              다운로드
+            </button>
+            <button
+              onclick="copyToClipboard()"
+              class="px-6 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition"
+            >
+              클립보드에 복사
+            </button>
+            <button
+              onclick="resetForm()"
+              class="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition"
+            >
+              처음부터 다시
+            </button>
+          </div>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div
+          id="loading"
+          class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+        >
+          <div class="bg-white p-6 rounded-lg shadow-xl">
+            <div
+              class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"
+            ></div>
+            <p class="mt-4 text-gray-700">처리 중...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <footer class="text-center text-gray-500 text-sm">
+        <p>Dockerfile Generator - 웹 서비스 컨테이너화를 쉽게</p>
+      </footer>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+  </body>
+</html>

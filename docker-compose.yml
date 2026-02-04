@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount source code for hot reload in development
+      - ./backend/app:/app/app
+      - ./frontend:/app/frontend
+      - ./uploads:/app/uploads
+    environment:
+      - ENVIRONMENT=development
+      - LOG_LEVEL=INFO
+      - MAX_UPLOAD_SIZE=524288000  # 500MB
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
