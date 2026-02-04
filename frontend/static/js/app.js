@@ -12,6 +12,16 @@ function hideLoading() {
     document.getElementById('loading').classList.add('hidden');
 }
 
+// Show/hide alert modal
+function showAlert(message) {
+    document.getElementById('alertMessage').textContent = message;
+    document.getElementById('alertModal').classList.remove('hidden');
+}
+
+function closeAlert() {
+    document.getElementById('alertModal').classList.add('hidden');
+}
+
 // Language selection
 function selectLanguage(language) {
     currentLanguage = language;
@@ -247,11 +257,11 @@ async function uploadJavaFile(file) {
         const data = await response.json();
         currentSessionId = data.session_id;
 
-        alert('JAR 파일이 분석되었습니다!');
+        showAlert('JAR 파일이 분석되었습니다!');
         console.log('Analysis result:', data.project_info);
 
     } catch (error) {
-        alert('파일 업로드 실패: ' + error.message);
+        showAlert('파일 업로드 실패: ' + error.message);
         console.error('Upload error:', error);
     } finally {
         hideLoading();
@@ -288,22 +298,22 @@ function validateSimpleLanguageFields() {
     const startCommand = document.getElementById('startCommand').value.trim();
 
     if (!baseImage) {
-        alert('Base Image를 입력해주세요.');
+        showAlert('Base Image를 입력해주세요.');
         return false;
     }
 
     if (!port) {
-        alert('포트를 입력해주세요.');
+        showAlert('포트를 입력해주세요.');
         return false;
     }
 
     if (!serviceUrl) {
-        alert('서비스 URL을 입력해주세요.');
+        showAlert('서비스 URL을 입력해주세요.');
         return false;
     }
 
     if (!startCommand) {
-        alert('실행 명령어를 입력해주세요.');
+        showAlert('실행 명령어를 입력해주세요.');
         return false;
     }
 
@@ -415,7 +425,7 @@ async function generateDockerfile() {
         showPreview(data.dockerfile);
 
     } catch (error) {
-        alert('Dockerfile 생성 실패: ' + error.message);
+        showAlert('Dockerfile 생성 실패: ' + error.message);
         console.error('Generation error:', error);
     } finally {
         hideLoading();
@@ -448,7 +458,7 @@ function showPreview(dockerfileContent) {
 // Download Dockerfile
 async function downloadDockerfile() {
     if (!currentSessionId) {
-        alert('세션이 만료되었습니다. 다시 생성해주세요.');
+        showAlert('세션이 만료되었습니다. 다시 생성해주세요.');
         return;
     }
 
@@ -470,10 +480,10 @@ async function downloadDockerfile() {
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
 
-        alert('Dockerfile이 다운로드되었습니다!');
+        showAlert('Dockerfile이 다운로드되었습니다!');
 
     } catch (error) {
-        alert('다운로드 실패: ' + error.message);
+        showAlert('다운로드 실패: ' + error.message);
         console.error('Download error:', error);
     }
 }
@@ -484,9 +494,9 @@ function copyToClipboard() {
 
     const content = editor.getValue();
     navigator.clipboard.writeText(content).then(() => {
-        alert('클립보드에 복사되었습니다!');
+        showAlert('클립보드에 복사되었습니다!');
     }).catch(err => {
-        alert('복사 실패: ' + err.message);
+        showAlert('복사 실패: ' + err.message);
     });
 }
 
