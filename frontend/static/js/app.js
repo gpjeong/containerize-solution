@@ -207,9 +207,14 @@ async function nextToConfig() {
   // Only for Java - check if file uploaded and analyze
   if (currentLanguage === 'java') {
     const fileInput = document.getElementById('jarFile');
-    if (fileInput.files.length > 0) {
-      await uploadJavaFile(fileInput.files[0]);
+
+    // Check if JAR file is uploaded
+    if (fileInput.files.length === 0) {
+      showAlert('JAR 파일을 업로드해주세요.');
+      return;
     }
+
+    await uploadJavaFile(fileInput.files[0]);
   }
 
   // Show config step
@@ -486,21 +491,18 @@ function showPreview(dockerfileContent) {
 }
 
 // Download Dockerfile
-async function downloadDockerfile() {
-  if (!currentSessionId) {
-    showAlert('세션이 만료되었습니다. 다시 생성해주세요.');
+function downloadDockerfile() {
+  if (!editor) {
+    showAlert('Dockerfile이 생성되지 않았습니다.');
     return;
   }
 
   try {
-    const response = await fetch(`/api/download/${currentSessionId}`);
-
-    if (!response.ok) {
-      throw new Error('Download failed');
-    }
+    // Get current content from editor (including any edits)
+    const content = editor.getValue();
 
     // Create blob and download
-    const blob = await response.blob();
+    const blob = new Blob([content], { type: 'text/plain' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
