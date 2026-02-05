@@ -13,7 +13,9 @@ from app.models.schemas import (
     PythonConfig,
     NodeJSConfig,
     JavaConfig,
-    ProjectInfo
+    ProjectInfo,
+    JenkinsBuildRequest,
+    JenkinsBuildResponse
 )
 from app.utils.security import validate_upload
 from app.utils.file_handler import upload_manager
@@ -238,3 +240,89 @@ async def list_templates():
             "java": ["spring-boot"]
         }
     }
+
+
+@router.post("/build/jenkins", response_model=JenkinsBuildResponse)
+async def trigger_jenkins_build(request: JenkinsBuildRequest):
+    """
+    Trigger Jenkins build with auto-generated Pipeline script
+
+    Workflow:
+    1. Generate Dockerfile from config
+    2. Generate Jenkins Pipeline script
+    3. Update Jenkins job with new Pipeline script
+    4. Trigger build
+
+    - **jenkins_url**: Jenkins server URL
+    - **jenkins_job**: Pipeline job name (must exist)
+    - **jenkins_token**: Jenkins API token
+    - **git_url**: Git repository URL
+    - **config**: Dockerfile generation config
+    - **image_name**: Docker image name
+
+    Returns build information including job URL and queue ID
+    """
+    try:
+        # Import here to avoid circular imports
+        from app.services.jenkins_client import create_jenkins_client
+        from app.services.pipeline_generator import pipeline_generator
+
+        logger.info(f"Jenkins build request for job: {request.jenkins_job}")
+
+        # 1. Generate Dockerfile
+        # Create minimal project info from config
+        project_info = ProjectInfo(
+            language=request.config.get("language"),
+            framework=request.config.get("framework", "generic"),
+            detected_version=request.config.get("runtime_version")
+        )
+
+        dockerfile_content = await dockerfile_generator.generate(
+            project_info=project_info,
+            user_config=request.config
+        )
+
+        logger.info(f"Generated Dockerfile for {project_info.language}/{project_info.framework}")
+
+        # 2. Generate Pipeline script
+        pipeline_script = pipeline_generator.generate_pipeline_script(
+            git_url=request.git_url,
+            git_branch=request.git_branch,
+            git_credential_id=request.git_credential_id,
+            dockerfile_content=dockerfile_content,
+            image_name=request.image_name,
+            image_tag=request.image_tag
+        )
+
+        logger.info(f"Generated Pipeline script for image: {request.image_name}:{request.image_tag}")
+
+        # 3. Create Jenkins client and update + trigger build
+        jenkins_client = create_jenkins_client(
+            jenkins_url=request.jenkins_url,
+            username=request.jenkins_username,
+            api_token=request.jenkins_token
+        )
+
+        # Update Pipeline script and trigger build
+        build_info = jenkins_client.update_and_build(
+            job_name=request.jenkins_job,
+            pipeline_script=pipeline_script
+        )
+
+        logger.info(f"Jenkins build triggered successfully. Queue ID: {build_info.get('queue_id')}")
+
+        return JenkinsBuildResponse(
+            job_name=build_info["job_name"],
+            queue_id=build_info.get("queue_id"),
+            queue_url=build_info["queue_url"],
+            job_url=build_info["job_url"],
+            status=build_info["status"],
+            message="Jenkins build triggered successfully"
+        )
+
+    except ValueError as e:
+        logger.error(f"Invalid configuration: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to trigger Jenkins build: {e}")
+        raise HTTPException(status_code=500, detail=f"Jenkins build failed: {str(e)}")

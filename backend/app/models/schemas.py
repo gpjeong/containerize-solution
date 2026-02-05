@@ -160,3 +160,67 @@ class UploadResponse(BaseModel):
     filename: str
     size: int
     project_info: ProjectInfo
+
+
+class JenkinsBuildRequest(BaseModel):
+    """Request for Jenkins build trigger"""
+    # Dockerfile configuration
+    config: Dict = Field(..., description="Dockerfile generation config")
+
+    # Jenkins settings
+    jenkins_url: str = Field(..., description="Jenkins server URL (e.g., http://jenkins.example.com:8080)")
+    jenkins_job: str = Field(..., description="Jenkins Pipeline job name")
+    jenkins_token: str = Field(..., description="Jenkins API token")
+    jenkins_username: str = Field(default="admin", description="Jenkins username")
+
+    # Git settings
+    git_url: str = Field(..., description="Git repository URL")
+    git_branch: str = Field(default="main", description="Git branch to checkout")
+    git_credential_id: Optional[str] = Field(None, description="Jenkins credential ID for Git (if private repo)")
+
+    # Docker image settings
+    image_name: str = Field(..., description="Docker image name")
+    image_tag: str = Field(default="latest", description="Docker image tag")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "config": {
+                    "language": "python",
+                    "framework": "generic",
+                    "port": 8000,
+                    "base_image": "python:3.11-slim"
+                },
+                "jenkins_url": "http://jenkins.example.com:8080",
+                "jenkins_job": "dockerfile-builder",
+                "jenkins_token": "11234567890abcdef",
+                "jenkins_username": "admin",
+                "git_url": "https://github.com/user/repo.git",
+                "git_branch": "main",
+                "git_credential_id": "github-credentials",
+                "image_name": "my-app",
+                "image_tag": "v1.0.0"
+            }
+        }
+
+
+class JenkinsBuildResponse(BaseModel):
+    """Response for Jenkins build trigger"""
+    job_name: str = Field(..., description="Jenkins job name")
+    queue_id: Optional[str] = Field(None, description="Jenkins queue item ID")
+    queue_url: str = Field(..., description="Jenkins queue item URL")
+    job_url: str = Field(..., description="Jenkins job URL")
+    status: str = Field(..., description="Build status (QUEUED, IN_PROGRESS, SUCCESS, FAILURE)")
+    message: str = Field(default="", description="Additional message")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "job_name": "dockerfile-builder",
+                "queue_id": "123",
+                "queue_url": "http://jenkins.example.com:8080/queue/item/123/",
+                "job_url": "http://jenkins.example.com:8080/job/dockerfile-builder/",
+                "status": "QUEUED",
+                "message": "Build triggered successfully"
+            }
+        }

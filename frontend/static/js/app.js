@@ -488,6 +488,9 @@ function showPreview(dockerfileContent) {
 
   // Set content
   editor.setValue(dockerfileContent);
+
+  // Show Jenkins build section
+  document.getElementById('step-jenkins').classList.remove('hidden');
 }
 
 // Download Dockerfile
@@ -606,4 +609,188 @@ function confirmReset() {
 // Legacy function (kept for compatibility)
 function resetForm() {
   showResetConfirmation();
+}
+
+// ============================================
+// Jenkins Build Functions
+// ============================================
+
+// Toggle Jenkins configuration section
+function toggleJenkins() {
+  const checkbox = document.getElementById('enableJenkins');
+  const config = document.getElementById('jenkinsConfig');
+
+  if (checkbox.checked) {
+    config.classList.remove('hidden');
+  } else {
+    config.classList.add('hidden');
+  }
+}
+
+// Get current Dockerfile configuration
+function getCurrentDockerConfig() {
+  if (currentLanguage === 'python' || currentLanguage === 'nodejs') {
+    const enableEnvVars = document.getElementById('enableEnvVars').checked;
+    const enableHealthCheck = document.getElementById('enableHealthCheck').checked;
+    const enableSystemDeps = document.getElementById('enableSystemDeps').checked;
+
+    const config = {
+      language: currentLanguage,
+      framework: 'generic',
+      runtime_version: '',
+      port: parseInt(document.getElementById('port').value),
+      environment_vars: enableEnvVars
+        ? parseEnvVars(document.getElementById('envVars').value)
+        : {},
+      health_check_path: enableHealthCheck
+        ? document.getElementById('healthCheck').value
+        : null,
+      system_dependencies: enableSystemDeps
+        ? parseSystemDeps(document.getElementById('systemDeps').value)
+        : [],
+      base_image: document.getElementById('baseImage').value,
+      user: 'appuser',
+      service_url: document.getElementById('serviceUrl').value,
+      custom_start_command: document.getElementById('startCommand').value,
+    };
+
+    if (currentLanguage === 'python') {
+      config.package_manager = 'pip';
+      config.entrypoint_file = 'main.py';
+    } else if (currentLanguage === 'nodejs') {
+      config.package_manager = 'npm';
+      config.start_command = config.custom_start_command;
+    }
+
+    return config;
+  } else if (currentLanguage === 'java') {
+    const enableEnvVars = document.getElementById('enableEnvVars').checked;
+    const enableHealthCheck = document.getElementById('enableHealthCheck').checked;
+    const enableSystemDeps = document.getElementById('enableSystemDeps').checked;
+
+    const config = {
+      language: currentLanguage,
+      framework: 'spring-boot',
+      port: parseInt(document.getElementById('javaPort').value),
+      environment_vars: enableEnvVars
+        ? parseEnvVars(document.getElementById('envVars').value)
+        : {},
+      health_check_path: enableHealthCheck
+        ? document.getElementById('healthCheck').value
+        : null,
+      system_dependencies: enableSystemDeps
+        ? parseSystemDeps(document.getElementById('systemDeps').value)
+        : [],
+      base_image: document.getElementById('javaBaseImage').value,
+      user: 'appuser',
+      service_url: document.getElementById('javaServiceUrl').value,
+      custom_start_command: document.getElementById('javaStartCommand').value,
+      build_tool: 'jar',
+      jar_file_name: currentJarFileName || 'app.jar',
+      jvm_options: '-Xmx512m',
+    };
+
+    return config;
+  }
+
+  return null;
+}
+
+// Build with Jenkins
+async function buildWithJenkins() {
+  showLoading();
+
+  try {
+    // Validate Jenkins fields
+    const jenkinsUrl = document.getElementById('jenkinsUrl').value.trim();
+    const jenkinsJob = document.getElementById('jenkinsJob').value.trim();
+    const jenkinsToken = document.getElementById('jenkinsToken').value.trim();
+    const jenkinsUsername = document.getElementById('jenkinsUsername').value.trim() || 'admin';
+    const gitUrl = document.getElementById('gitUrl').value.trim();
+    const imageName = document.getElementById('imageName').value.trim();
+
+    if (!jenkinsUrl) {
+      showAlert('Jenkins URL을 입력해주세요.');
+      hideLoading();
+      return;
+    }
+
+    if (!jenkinsJob) {
+      showAlert('Jenkins Job 이름을 입력해주세요.');
+      hideLoading();
+      return;
+    }
+
+    if (!jenkinsToken) {
+      showAlert('Jenkins API Token을 입력해주세요.');
+      hideLoading();
+      return;
+    }
+
+    if (!gitUrl) {
+      showAlert('Git Repository URL을 입력해주세요.');
+      hideLoading();
+      return;
+    }
+
+    if (!imageName) {
+      showAlert('Docker 이미지 이름을 입력해주세요.');
+      hideLoading();
+      return;
+    }
+
+    // Get current Dockerfile config
+    const config = getCurrentDockerConfig();
+    if (!config) {
+      showAlert('Dockerfile 설정을 먼저 완료해주세요.');
+      hideLoading();
+      return;
+    }
+
+    // Build request payload
+    const payload = {
+      config: config,
+      jenkins_url: jenkinsUrl,
+      jenkins_job: jenkinsJob,
+      jenkins_token: jenkinsToken,
+      jenkins_username: jenkinsUsername,
+      git_url: gitUrl,
+      git_branch: document.getElementById('gitBranch').value.trim() || 'main',
+      git_credential_id: document.getElementById('gitCredentialId').value.trim() || null,
+      image_name: imageName,
+      image_tag: document.getElementById('imageTag').value.trim() || 'latest'
+    };
+
+    console.log('Sending Jenkins build request:', payload);
+
+    // Call API
+    const response = await fetch('/api/build/jenkins', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Jenkins 빌드 실패');
+    }
+
+    const data = await response.json();
+
+    console.log('Jenkins build response:', data);
+
+    // Show success message with clickable URL
+    const message = `Jenkins 빌드가 시작되었습니다!\n\nJob: ${data.job_name}\nStatus: ${data.status}\n\nJenkins에서 빌드 진행 상황을 확인하세요:\n${data.job_url}`;
+
+    showAlert(message, 'success');
+
+    // Optional: Open Jenkins URL in new tab
+    // window.open(data.job_url, '_blank');
+
+  } catch (error) {
+    console.error('Jenkins build error:', error);
+    showAlert('Jenkins 빌드 실패: ' + error.message);
+  } finally {
+    hideLoading();
+  }
 }

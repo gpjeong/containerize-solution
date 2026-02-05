@@ -6,7 +6,9 @@
       "Bash(chmod:*)",
       "Bash(docker build:*)",
       "Bash(cat:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(python -m uvicorn:*)",
+      "Bash(docker logs:*)"
     ],
     "deny": [],
     "ask": []

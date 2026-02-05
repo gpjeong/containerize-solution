@@ -352,6 +352,189 @@
           </div>
         </div>
 
+        <!-- Step 5: Jenkins Build (Optional) -->
+        <div id="step-jenkins" class="step hidden mt-8">
+          <h2 class="text-2xl font-semibold mb-4">5. Jenkins 빌드 (선택사항)</h2>
+
+          <div class="mb-4">
+            <label class="flex items-center mb-2">
+              <input
+                type="checkbox"
+                id="enableJenkins"
+                onchange="toggleJenkins()"
+                class="mr-2"
+              />
+              <span class="text-sm font-medium text-gray-700">
+                Jenkins에서 자동 빌드
+              </span>
+            </label>
+            <p class="text-sm text-gray-500 ml-6">
+              Git 저장소에서 소스를 가져와 Docker 이미지를 자동으로 빌드합니다
+            </p>
+          </div>
+
+          <div id="jenkinsConfig" class="hidden">
+            <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+              <div class="flex">
+                <div class="flex-shrink-0">
+                  <svg class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                  </svg>
+                </div>
+                <div class="ml-3">
+                  <p class="text-sm text-yellow-700">
+                    사전 준비: Jenkins에 빈 Pipeline Job 생성, API Token 발급, Git Credential 등록 (Private repo인 경우)
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Jenkins Server Settings -->
+            <h3 class="text-lg font-semibold mb-3">Jenkins 서버 설정</h3>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Jenkins URL <span class="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="jenkinsUrl"
+                  class="w-full p-2 border border-gray-300 rounded-md"
+                  placeholder="예: http://jenkins.example.com:8080"
+                />
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Jenkins Job 이름 <span class="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="jenkinsJob"
+                  class="w-full p-2 border border-gray-300 rounded-md"
+                  placeholder="예: dockerfile-builder"
+                />
+                <p class="mt-1 text-sm text-gray-500">
+                  미리 생성한 Pipeline Job 이름
+                </p>
+              </div>
+            </div>
+
+            <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Jenkins Username
+                </label>
+                <input
+                  type="text"
+                  id="jenkinsUsername"
+                  value="admin"
+                  class="w-full p-2 border border-gray-300 rounded-md"
+                  placeholder="Jenkins username"
+                />
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  API Token <span class="text-red-500">*</span>
+                </label>
+                <input
+                  type="password"
+                  id="jenkinsToken"
+                  class="w-full p-2 border border-gray-300 rounded-md"
+                  placeholder="Jenkins API Token"
+                />
+              </div>
+            </div>
+
+            <!-- Git Settings -->
+            <h3 class="text-lg font-semibold mt-6 mb-3">Git 저장소 설정</h3>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Git Repository URL <span class="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="gitUrl"
+                  class="w-full p-2 border border-gray-300 rounded-md"
+                  placeholder="예: https://github.com/user/repo.git"
+                />
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Git Branch
+                </label>
+                <input
+                  type="text"
+                  id="gitBranch"
+                  value="main"
+                  class="w-full p-2 border border-gray-300 rounded-md"
+                  placeholder="기본: main"
+                />
+              </div>
+            </div>
+
+            <div class="mt-4">
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                Git Credential ID (Private Repository인 경우)
+              </label>
+              <input
+                type="text"
+                id="gitCredentialId"
+                class="w-full p-2 border border-gray-300 rounded-md"
+                placeholder="Jenkins에 등록된 Credential ID (예: github-credentials)"
+              />
+              <p class="mt-1 text-sm text-gray-500">
+                Public repository는 비워두세요
+              </p>
+            </div>
+
+            <!-- Docker Image Settings -->
+            <h3 class="text-lg font-semibold mt-6 mb-3">Docker 이미지 설정</h3>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Docker 이미지 이름 <span class="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="imageName"
+                  class="w-full p-2 border border-gray-300 rounded-md"
+                  placeholder="예: my-app"
+                />
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Docker 이미지 태그
+                </label>
+                <input
+                  type="text"
+                  id="imageTag"
+                  value="latest"
+                  class="w-full p-2 border border-gray-300 rounded-md"
+                  placeholder="기본: latest"
+                />
+              </div>
+            </div>
+
+            <button
+              onclick="buildWithJenkins()"
+              class="mt-6 px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition flex items-center gap-2"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+              </svg>
+              <span>Jenkins에서 빌드하기</span>
+            </button>
+          </div>
+        </div>
+
         <!-- Loading Indicator -->
         <div
           id="loading"

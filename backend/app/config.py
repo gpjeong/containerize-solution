@@ -34,4 +34,4 @@ ALLOWED_ORIGINS = [
 ]
 
 # Logging
-LOG_LEVEL = "INFO"
+LOG_LEVEL = "DEBUG"
