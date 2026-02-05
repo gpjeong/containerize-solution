@@ -537,7 +537,9 @@
             </div>
 
             <!-- Harbor Registry Settings -->
-            <div class="mt-4 p-4 bg-purple-50 border border-purple-200 rounded-md">
+            <div
+              class="mt-4 p-4 bg-purple-50 border border-purple-200 rounded-md"
+            >
               <h4 class="font-medium text-gray-700 mb-3 flex items-center">
                 <span class="mr-2">🐳</span>
                 Harbor Registry 설정 (선택사항)
@@ -584,11 +586,13 @@
                   onchange="toggleKanikoOption()"
                 />
                 <span class="ml-2 text-sm font-medium text-gray-700">
-                  🚢 Kubernetes 환경용 Pipeline 생성 (Jenkins가 K8s에서 실행 중인 경우)
+                  🚢 Kubernetes 환경용 Pipeline 생성 (Jenkins가 K8s에서 실행
+                  중인 경우)
                 </span>
               </label>
               <p class="mt-2 text-xs text-gray-600 ml-6">
-                Jenkins가 Kubernetes 클러스터에서 실행 중이면 이 옵션을 선택하세요.
+                Jenkins가 Kubernetes 클러스터에서 실행 중이면 이 옵션을
+                선택하세요.
               </p>
 
               <!-- Kaniko Option (shown when Kubernetes is selected) -->
@@ -604,17 +608,18 @@
                   </span>
                 </label>
                 <p class="mt-1 text-xs text-gray-600 ml-6">
-                  Kaniko는 Docker daemon 없이 이미지를 빌드합니다. privileged 권한이 필요 없어 더 안전합니다.
-                  <br/>
+                  Kaniko는 Docker daemon 없이 이미지를 빌드합니다. privileged
+                  권한이 필요 없어 더 안전합니다.
+                  <br />
                   ⚠️ DinD에서 문제가 발생하면 Kaniko를 사용하세요.
                 </p>
               </div>
             </div>
 
-            <div class="mt-6 flex gap-3">
+            <div class="mt-6">
               <button
                 onclick="previewPipeline()"
-                class="px-6 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition flex items-center gap-2"
+                class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition flex items-center gap-2"
               >
                 <svg
                   class="w-5 h-5"
@@ -635,26 +640,7 @@
                     d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
                   ></path>
                 </svg>
-                <span>Pipeline 미리보기</span>
-              </button>
-              <button
-                onclick="buildWithJenkins()"
-                class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition flex items-center gap-2"
-              >
-                <svg
-                  class="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M13 10V3L4 14h7v7l9-11h-7z"
-                  ></path>
-                </svg>
-                <span>Jenkins에서 빌드하기</span>
+                <span>Jenkins Image Build Pipeline 생성하기</span>
               </button>
             </div>
           </div>
@@ -752,7 +738,7 @@
             >
               <div>
                 <h3 class="text-2xl font-semibold text-gray-800">
-                  Jenkins Pipeline 미리보기
+                  Jenkins Image Build Pipeline
                 </h3>
                 <p class="text-sm text-gray-500 mt-1">
                   파이프라인 스크립트를 확인하고 수정할 수 있습니다

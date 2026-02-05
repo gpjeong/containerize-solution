@@ -74,12 +74,29 @@ EOF
                         def cacheRepo = params.REGISTRY_URL + "/cache"
                         sh "/kaniko/executor --context=\$(pwd) --dockerfile=Dockerfile --destination=${destination} --cache=true --cache-repo=${cacheRepo} --skip-tls-verify" """
             success_message = "Image built and pushed to Harbor successfully!"
+            verify_stage = ""
+            post_success_message = "Docker image built and pushed to Harbor successfully!"
+            image_location = f"${{params.REGISTRY_URL}}/${{params.IMAGE_NAME}}:${{params.IMAGE_TAG}}"
+            tar_message = ""
         else:
             # Local build only
             build_script = r"""def destination = params.IMAGE_NAME + ":" + params.IMAGE_TAG
                         echo "Destination: ${destination}"
                         sh "/kaniko/executor --context=\$(pwd) --dockerfile=Dockerfile --no-push --destination=${destination} --tar-path=image.tar" """
             success_message = "Image built successfully and saved as image.tar"
+            verify_stage = """
+
+        stage('Verify Image') {
+            steps {
+                container('kaniko') {
+                    echo 'Verifying built image tarball...'
+                    sh 'ls -lh image.tar'
+                }
+            }
+        }"""
+            post_success_message = "Docker image built successfully with Kaniko!"
+            image_location = "${{params.IMAGE_NAME}}:${{params.IMAGE_TAG}}"
+            tar_message = "\n            echo 'Image saved as: image.tar'"
 
         # Build Pod YAML (simple, no secret mount - will use Jenkins credentials)
         pod_yaml = """apiVersion: v1
@@ -148,22 +165,13 @@ spec:
                 }}
             }}
         }}
-
-        {'' if registry_url else "stage('Verify Image') {"}
-            {'' if registry_url else "steps {"}
-                {'' if registry_url else "container('kaniko') {"}
-                    {'' if registry_url else "echo 'Verifying built image tarball...'"}
-                    {'' if registry_url else "sh 'ls -lh image.tar'"}
-                {'' if registry_url else "}"}
-            {'' if registry_url else "}"}
-        {'' if registry_url else "}"}
+{verify_stage}
     }}
 
     post {{
         success {{
-            echo '{'Docker image built and pushed to Harbor successfully!' if registry_url else 'Docker image built successfully with Kaniko!'}'
-            echo "Image: {f'${{params.REGISTRY_URL}}/' if registry_url else ''}${{params.IMAGE_NAME}}:${{params.IMAGE_TAG}}"
-            {'' if registry_url else "echo 'Image saved as: image.tar'"}
+            echo '{post_success_message}'
+            echo "Image: {image_location}"{tar_message}
         }}
         failure {{
             echo 'Build failed!'
