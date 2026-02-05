@@ -29,6 +29,14 @@
 - **보안**: Non-root 사용자 자동 설정
 - **미리보기 및 편집**: CodeMirror 에디터로 실시간 확인 및 수정
 - **다운로드**: 생성된 Dockerfile 다운로드 또는 클립보드 복사
+- **Jenkins 통합**: 생성된 Dockerfile을 Jenkins API를 통해 자동 빌드
+
+### Jenkins CI/CD 통합 (NEW!)
+- **자동 빌드**: Dockerfile 생성 후 Jenkins에서 즉시 빌드
+- **Pipeline 자동 생성**: Groovy Pipeline 스크립트 자동 생성 및 배포
+- **Git 통합**: Git 저장소에서 소스코드 자동 체크아웃
+- **안전한 전송**: Base64 인코딩 및 CSRF 토큰 자동 처리
+- **SSL 지원**: 자체 서명 인증서 환경 지원
 
 ### UI 개선
 - **시각적 언어 선택**: 실제 언어 로고 표시 및 선택 상태 하이라이트
@@ -103,6 +111,27 @@ Python, Node.js, Java 중 선택 (로고 아이콘으로 시각적 표시)
 - "다운로드" 또는 "클립보드에 복사" 선택
 - "🔄 Dockerfile 재생성"으로 처음부터 다시 시작
 
+### 5. Jenkins 자동 빌드 (선택사항)
+
+Dockerfile 생성 후 Jenkins에서 자동으로 빌드하려면:
+
+1. **Jenkins 준비사항**
+   - Jenkins에서 Pipeline Job 미리 생성
+   - Git 저장소에 소스코드 업로드
+   - Jenkins API Token 발급
+
+2. **Jenkins 빌드 설정**
+   - Jenkins URL 입력
+   - Jenkins Job 이름 입력
+   - Jenkins 사용자명 및 API 토큰 입력
+   - Git Repository URL 및 브랜치 입력
+   - Docker Image 이름 및 태그 입력
+
+3. **빌드 실행**
+   - "Jenkins에서 빌드하기" 버튼 클릭
+   - Jenkins에서 자동으로 빌드 시작
+   - Jenkins 콘솔에서 빌드 진행 상황 확인
+
 ## API 엔드포인트
 
 ### `POST /api/upload/java`
@@ -129,6 +158,10 @@ Dockerfile 생성
 
 지원하는 템플릿 목록 조회
 
+### `POST /api/build/jenkins`
+
+Jenkins 빌드 트리거 (Dockerfile 자동 빌드)
+
 ### `GET /api/docs`
 
 자동 생성된 API 문서 (Swagger UI)
@@ -145,7 +178,9 @@ containerize-tool/
 │   │   ├── services/            # 비즈니스 로직
 │   │   │   ├── file_analyzer.py
 │   │   │   ├── dockerfile_generator.py
-│   │   │   └── template_engine.py
+│   │   │   ├── template_engine.py
+│   │   │   ├── jenkins_client.py         # Jenkins API 클라이언트
+│   │   │   └── pipeline_generator.py     # Pipeline 스크립트 생성
 │   │   ├── templates/           # Jinja2 템플릿
 │   │   │   ├── python/
 │   │   │   ├── nodejs/

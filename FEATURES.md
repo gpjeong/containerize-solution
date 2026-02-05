@@ -230,6 +230,100 @@ RUN apk add --no-cache curl wget git
 - 세션 ID로 관리
 - 자동 정리 (1시간 후)
 
+### 4. Jenkins 통합 (자동 빌드)
+
+#### 4.1 개요
+생성된 Dockerfile을 Jenkins API를 통해 자동으로 빌드할 수 있습니다. 사용자가 Jenkins에서 Pipeline Job을 미리 생성해두면, 이 솔루션이 자동으로 Pipeline 스크립트를 생성하고 Jenkins에 전달하여 Docker 이미지를 빌드합니다.
+
+#### 4.2 주요 기능
+- **Pipeline 스크립트 자동 생성**: Dockerfile 기반으로 Groovy Pipeline 스크립트 자동 생성
+- **Jenkins API 통합**: CSRF 토큰 자동 처리 및 인증
+- **Git 통합**: Git 저장소에서 소스코드 체크아웃
+- **자동 빌드 트리거**: Pipeline 업데이트 및 빌드 자동 실행
+- **Base64 인코딩**: Dockerfile 내용을 안전하게 Jenkins에 전달
+
+#### 4.3 필수 설정
+| 설정 항목 | 설명 | 예시 |
+|----------|------|------|
+| **Jenkins URL** | Jenkins 서버 주소 | https://jenkins.example.com |
+| **Jenkins Job 이름** | 미리 생성된 Pipeline Job 이름 | my-docker-build-job |
+| **Jenkins 사용자명** | Jenkins 사용자 계정 | admin |
+| **Jenkins API 토큰** | Jenkins API Token | 11abcd1234567890abcdef |
+| **Git Repository URL** | 소스코드 저장소 URL | https://github.com/user/repo.git |
+| **Git Branch** | Git 브랜치 이름 | main |
+| **Git Credential ID** | Jenkins에 등록된 Git 인증 정보 ID (선택) | git-credentials |
+| **Docker Image 이름** | 빌드할 이미지 이름 | my-app |
+| **Docker Image 태그** | 이미지 태그 | latest |
+
+#### 4.4 동작 방식
+```
+1. 사용자가 Dockerfile 생성 완료
+2. Jenkins 빌드 섹션에서 설정 입력
+3. "Jenkins에서 빌드하기" 버튼 클릭
+4. 백엔드에서 처리:
+   a. Dockerfile 생성
+   b. Pipeline 스크립트 생성 (Base64 인코딩)
+   c. Jenkins Crumb(CSRF 토큰) 가져오기
+   d. Jenkins Job의 config.xml 업데이트
+   e. 빌드 트리거
+5. Jenkins에서 자동 실행:
+   a. Git Repository 체크아웃
+   b. Dockerfile 생성 (Base64 디코딩)
+   c. Docker 이미지 빌드
+   d. 이미지 검증
+```
+
+#### 4.5 생성되는 Pipeline 스크립트 구조
+```groovy
+pipeline {
+    agent any
+
+    parameters {
+        string(name: 'IMAGE_NAME', defaultValue: 'my-app')
+        string(name: 'IMAGE_TAG', defaultValue: 'latest')
+    }
+
+    stages {
+        stage('Checkout') {
+            // Git 저장소에서 소스코드 체크아웃
+        }
+
+        stage('Create Dockerfile') {
+            // Base64로 인코딩된 Dockerfile 디코딩 및 생성
+        }
+
+        stage('Build Docker Image') {
+            // Docker 이미지 빌드
+        }
+
+        stage('Verify Image') {
+            // 빌드된 이미지 검증
+        }
+    }
+
+    post {
+        success { /* 빌드 성공 메시지 */ }
+        failure { /* 빌드 실패 메시지 */ }
+    }
+}
+```
+
+#### 4.6 보안 기능
+- **SSL 인증서 검증**: 자체 서명 인증서 지원 (SSL 검증 비활성화 옵션)
+- **CSRF 보호**: Jenkins Crumb 자동 처리
+- **API Token 인증**: HTTPBasicAuth 사용
+- **안전한 데이터 전송**: Base64 인코딩으로 특수문자 처리
+- **CDATA 섹션**: XML 파싱 문제 방지
+
+#### 4.7 에러 처리
+| 에러 | 원인 | 해결 방법 |
+|------|------|----------|
+| SSL 인증 실패 | 자체 서명 인증서 | SSL 검증 자동 비활성화 |
+| CSRF 토큰 오류 | Jenkins CSRF 보호 활성화 | Crumb 자동 가져오기 |
+| 인증 실패 | API 토큰 오류 | 올바른 사용자명/토큰 확인 |
+| Job 없음 | Jenkins Job 미생성 | Pipeline Job 먼저 생성 |
+| 500 서버 오류 | Pipeline 스크립트 오류 | Jenkins 로그 확인 |
+
 ---
 
 ## 사용 시나리오
@@ -639,6 +733,56 @@ GET /api/templates
 }
 ```
 
+### 7. Jenkins 빌드 트리거
+
+**Endpoint:**
+```
+POST /api/build/jenkins
+```
+
+**Request:**
+```json
+{
+  "config": {
+    "language": "python",
+    "framework": "fastapi",
+    "runtime_version": "3.11",
+    "port": 8000,
+    "base_image": "python:3.11-slim",
+    "service_url": "https://api.example.com",
+    "custom_start_command": "uvicorn main:app --host 0.0.0.0 --port 8000"
+  },
+  "jenkins_url": "https://jenkins.example.com",
+  "jenkins_job": "my-docker-build-job",
+  "jenkins_username": "admin",
+  "jenkins_token": "11abcd1234567890abcdef",
+  "git_url": "https://github.com/user/repo.git",
+  "git_branch": "main",
+  "git_credential_id": "git-credentials",
+  "image_name": "my-app",
+  "image_tag": "latest"
+}
+```
+
+**Response:**
+```json
+{
+  "job_name": "my-docker-build-job",
+  "queue_id": "123",
+  "queue_url": "https://jenkins.example.com/queue/item/123/",
+  "job_url": "https://jenkins.example.com/job/my-docker-build-job",
+  "status": "QUEUED",
+  "message": "Jenkins build triggered successfully"
+}
+```
+
+**에러 응답:**
+```json
+{
+  "detail": "Jenkins job 'my-docker-build-job' not found. Please create the job first."
+}
+```
+
 ---
 
 ## 에러 처리
@@ -684,6 +828,8 @@ GET /api/templates
 ## 향후 계획
 
 ### Phase 10: 추가 기능
+- [x] Jenkins CI/CD 통합 (자동 빌드)
+- [ ] Docker Registry Push 기능
 - [ ] Docker Compose 생성
 - [ ] Kubernetes manifest 생성
 - [ ] .dockerignore 파일 생성
@@ -708,9 +854,35 @@ GET /api/templates
 
 ---
 
-## 최근 업데이트 (v1.1.0)
+## 최근 업데이트
 
-### UI/UX 개선
+### v1.2.0 (2026-02-05) - Jenkins 통합
+
+#### 새로운 기능
+- ✅ **Jenkins CI/CD 통합**: Dockerfile 생성 후 Jenkins에서 자동 빌드
+- ✅ **Pipeline 스크립트 자동 생성**: Groovy Pipeline 스크립트 자동 생성 및 전달
+- ✅ **Git 통합**: Git 저장소에서 소스코드 자동 체크아웃
+- ✅ **CSRF 보호**: Jenkins Crumb 자동 처리
+- ✅ **Base64 인코딩**: Dockerfile 안전한 전송
+- ✅ **SSL 지원**: 자체 서명 인증서 지원
+
+#### Jenkins 관련 추가 파일
+- `backend/app/services/jenkins_client.py`: Jenkins REST API 클라이언트
+- `backend/app/services/pipeline_generator.py`: Pipeline 스크립트 생성기
+- `backend/app/models/schemas.py`: JenkinsBuildRequest/Response 스키마
+- API Endpoint: `POST /api/build/jenkins`
+
+#### 기술적 개선
+- ✅ Jenkins API 인증 (HTTPBasicAuth)
+- ✅ CSRF 토큰 자동 관리
+- ✅ SSL 인증서 검증 옵션
+- ✅ Job 존재 여부 사전 확인
+- ✅ 상세한 에러 로깅 및 처리
+- ✅ CDATA 섹션으로 XML 파싱 문제 방지
+
+### v1.1.0 (2025-02-05)
+
+#### UI/UX 개선
 - ✅ Python/Node.js 워크플로우 단순화 (프레임워크 선택 제거)
 - ✅ 필수 설정 명확화 (Base Image, 포트, 서비스 URL, 실행 명령어)
 - ✅ 선택적 기능 체크박스화 (환경변수, Health Check, 시스템 의존성)
@@ -720,19 +892,19 @@ GET /api/templates
 - ✅ 커스텀 알림 모달 (브라우저 alert 대체)
 - ✅ 재생성 버튼 및 확인 모달
 
-### Java 개선
+#### Java 개선
 - ✅ Maven/Gradle 소스 프로젝트 옵션 제거 (JAR만 지원)
 - ✅ 런타임 버전 필드 제거
 - ✅ 업로드한 JAR 파일의 실제 파일명 자동 반영
 - ✅ Java 실행 명령어 ENTRYPOINT 방식으로 변경 (CMD → ENTRYPOINT)
 - ✅ Java 필수 필드 추가 (Base Image, 포트, 서비스 URL, 실행 명령어)
 
-### 기술적 개선
+#### 기술적 개선
 - ✅ CMD 명령어 JSON 배열 형식으로 통일
 - ✅ 언어 전환 시 입력값 자동 초기화
 - ✅ 동적 JAR 파일명 처리
 
 ---
 
-**Version**: 1.1.0
-**Last Updated**: 2025-02-05
+**Version**: 1.2.0
+**Last Updated**: 2026-02-05
