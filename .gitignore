@@ -24,6 +24,9 @@ build/
 uploads/*
 !uploads/.gitkeep
 
+# Sample applications (managed separately)
+samples/
+
 # OS
 .DS_Store
 Thumbs.db
