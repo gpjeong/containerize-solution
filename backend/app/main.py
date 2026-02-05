@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 # Create FastAPI app
 app = FastAPI(
-    title="WebApp Dockerfile Generator",
+    title="WebApp Containerization Solution",
     description="Automatically generate optimized Dockerfiles for web services",
     version="1.0.0",
     docs_url="/api/docs",

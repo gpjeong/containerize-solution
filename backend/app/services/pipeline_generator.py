@@ -64,7 +64,7 @@ class PipelineGenerator:
                                 cat > /kaniko/.docker/config.json << EOF
 {{"auths":{{"${{params.REGISTRY_URL}}":{{"username":"${{HARBOR_USER}}","password":"${{HARBOR_PASS}}"}}}}}}
 EOF
-                                /kaniko/executor --context=\\$(pwd) --dockerfile=Dockerfile --destination=${{destination}} --cache=true --cache-repo=${{cacheRepo}} --skip-tls-verify
+                                /kaniko/executor --context=\\$(pwd) --dockerfile=Dockerfile --destination=$destination --cache=true --cache-repo=$cacheRepo --skip-tls-verify
                             \"\"\"
                         }}"""
             else:
