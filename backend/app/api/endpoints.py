@@ -242,6 +242,126 @@ async def list_templates():
     }
 
 
+@router.post("/preview/pipeline")
+async def preview_pipeline_script(request: JenkinsBuildRequest):
+    """
+    Preview Jenkins Pipeline script without triggering build
+
+    Generates the Pipeline script that would be used for Jenkins build
+    Returns the Groovy script for preview/editing
+    """
+    try:
+        from app.services.pipeline_generator import pipeline_generator
+
+        logger.info(f"Generating pipeline preview for {request.config.get('language')}")
+
+        # Generate Dockerfile
+        project_info = ProjectInfo(
+            language=request.config.get("language"),
+            framework=request.config.get("framework", "generic"),
+            detected_version=request.config.get("runtime_version")
+        )
+
+        dockerfile_content = await dockerfile_generator.generate(
+            project_info=project_info,
+            user_config=request.config
+        )
+
+        # Generate Pipeline script for preview (with readable Dockerfile)
+        # Use Kubernetes-compatible pipeline if requested
+        if request.use_kubernetes and request.use_kaniko:
+            # Kubernetes with Kaniko (no privileged mode)
+            pipeline_script = pipeline_generator.generate_k8s_kaniko_pipeline_script_for_preview(
+                git_url=request.git_url,
+                git_branch=request.git_branch,
+                git_credential_id=request.git_credential_id,
+                dockerfile_content=dockerfile_content,
+                image_name=request.image_name,
+                image_tag=request.image_tag,
+                registry_url=request.harbor_url,
+                registry_credential_id=request.harbor_credential_id
+            )
+        elif request.use_kubernetes:
+            # Kubernetes with Docker-in-Docker
+            pipeline_script = pipeline_generator.generate_k8s_pipeline_script_for_preview(
+                git_url=request.git_url,
+                git_branch=request.git_branch,
+                git_credential_id=request.git_credential_id,
+                dockerfile_content=dockerfile_content,
+                image_name=request.image_name,
+                image_tag=request.image_tag
+            )
+        else:
+            # Standard pipeline
+            pipeline_script = pipeline_generator.generate_pipeline_script_for_preview(
+                git_url=request.git_url,
+                git_branch=request.git_branch,
+                git_credential_id=request.git_credential_id,
+                dockerfile_content=dockerfile_content,
+                image_name=request.image_name,
+                image_tag=request.image_tag
+            )
+
+        return {
+            "pipeline_script": pipeline_script,
+            "dockerfile": dockerfile_content
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to generate pipeline preview: {e}")
+        raise HTTPException(status_code=500, detail=f"Preview generation failed: {str(e)}")
+
+
+@router.post("/build/jenkins/custom", response_model=JenkinsBuildResponse)
+async def trigger_jenkins_build_custom(request: Dict):
+    """
+    Trigger Jenkins build with custom/edited Pipeline script
+
+    This endpoint allows users to build with an edited pipeline script
+    from the preview modal
+    """
+    try:
+        from app.services.jenkins_client import create_jenkins_client
+
+        jenkins_url = request.get("jenkins_url")
+        jenkins_job = request.get("jenkins_job")
+        jenkins_token = request.get("jenkins_token")
+        jenkins_username = request.get("jenkins_username", "admin")
+        pipeline_script = request.get("pipeline_script")
+
+        logger.info(f"Custom Jenkins build request for job: {jenkins_job}")
+
+        # Create Jenkins client
+        jenkins_client = create_jenkins_client(
+            jenkins_url=jenkins_url,
+            username=jenkins_username,
+            api_token=jenkins_token
+        )
+
+        # Update Pipeline script and trigger build
+        build_info = jenkins_client.update_and_build(
+            job_name=jenkins_job,
+            pipeline_script=pipeline_script
+        )
+
+        logger.info(f"Custom Jenkins build triggered. Build Number: {build_info.get('build_number')}")
+
+        return JenkinsBuildResponse(
+            job_name=build_info["job_name"],
+            queue_id=build_info.get("queue_id"),
+            queue_url=build_info["queue_url"],
+            job_url=build_info["job_url"],
+            build_number=build_info.get("build_number"),
+            build_url=build_info.get("build_url"),
+            status=build_info["status"],
+            message="Jenkins build triggered with custom pipeline"
+        )
+
+    except Exception as e:
+        logger.error(f"Failed to trigger custom Jenkins build: {e}")
+        raise HTTPException(status_code=500, detail=f"Jenkins build failed: {str(e)}")
+
+
 @router.post("/build/jenkins", response_model=JenkinsBuildResponse)
 async def trigger_jenkins_build(request: JenkinsBuildRequest):
     """
@@ -284,15 +404,39 @@ async def trigger_jenkins_build(request: JenkinsBuildRequest):
 
         logger.info(f"Generated Dockerfile for {project_info.language}/{project_info.framework}")
 
-        # 2. Generate Pipeline script
-        pipeline_script = pipeline_generator.generate_pipeline_script(
-            git_url=request.git_url,
-            git_branch=request.git_branch,
-            git_credential_id=request.git_credential_id,
-            dockerfile_content=dockerfile_content,
-            image_name=request.image_name,
-            image_tag=request.image_tag
-        )
+        # 2. Generate Pipeline script (Kubernetes or standard)
+        if request.use_kubernetes and request.use_kaniko:
+            # Kubernetes with Kaniko (no privileged mode)
+            pipeline_script = pipeline_generator.generate_k8s_kaniko_pipeline_script(
+                git_url=request.git_url,
+                git_branch=request.git_branch,
+                git_credential_id=request.git_credential_id,
+                dockerfile_content=dockerfile_content,
+                image_name=request.image_name,
+                image_tag=request.image_tag,
+                registry_url=request.harbor_url,
+                registry_credential_id=request.harbor_credential_id
+            )
+        elif request.use_kubernetes:
+            # Kubernetes with Docker-in-Docker
+            pipeline_script = pipeline_generator.generate_k8s_pipeline_script(
+                git_url=request.git_url,
+                git_branch=request.git_branch,
+                git_credential_id=request.git_credential_id,
+                dockerfile_content=dockerfile_content,
+                image_name=request.image_name,
+                image_tag=request.image_tag
+            )
+        else:
+            # Standard pipeline
+            pipeline_script = pipeline_generator.generate_pipeline_script(
+                git_url=request.git_url,
+                git_branch=request.git_branch,
+                git_credential_id=request.git_credential_id,
+                dockerfile_content=dockerfile_content,
+                image_name=request.image_name,
+                image_tag=request.image_tag
+            )
 
         logger.info(f"Generated Pipeline script for image: {request.image_name}:{request.image_tag}")
 
@@ -309,13 +453,15 @@ async def trigger_jenkins_build(request: JenkinsBuildRequest):
             pipeline_script=pipeline_script
         )
 
-        logger.info(f"Jenkins build triggered successfully. Queue ID: {build_info.get('queue_id')}")
+        logger.info(f"Jenkins build triggered successfully. Queue ID: {build_info.get('queue_id')}, Build Number: {build_info.get('build_number')}")
 
         return JenkinsBuildResponse(
             job_name=build_info["job_name"],
             queue_id=build_info.get("queue_id"),
             queue_url=build_info["queue_url"],
             job_url=build_info["job_url"],
+            build_number=build_info.get("build_number"),
+            build_url=build_info.get("build_url"),
             status=build_info["status"],
             message="Jenkins build triggered successfully"
         )

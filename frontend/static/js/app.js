@@ -3,6 +3,8 @@ let currentLanguage = null;
 let currentSessionId = null;
 let currentJarFileName = null;
 let editor = null;
+let pipelineEditor = null;
+let cachedPipelineScript = null;
 
 // Show/hide loading
 function showLoading() {
@@ -14,19 +16,31 @@ function hideLoading() {
 }
 
 // Show/hide alert modal
-function showAlert(message, type = 'error') {
+function showAlert(message, type = 'error', isHtml = false) {
   const iconElement = document.getElementById('alertIcon');
   const titleElement = document.getElementById('alertTitle');
+  const messageElement = document.getElementById('alertMessage');
 
   if (type === 'success') {
     iconElement.textContent = '✅';
     titleElement.textContent = '완료';
+    // Hide title for success messages
+    titleElement.classList.add('hidden');
+    iconElement.classList.add('hidden');
   } else {
     iconElement.textContent = '⚠️';
     titleElement.textContent = '입력 오류';
+    // Show title for error messages
+    titleElement.classList.remove('hidden');
+    iconElement.classList.remove('hidden');
   }
 
-  document.getElementById('alertMessage').textContent = message;
+  if (isHtml) {
+    messageElement.innerHTML = message;
+  } else {
+    messageElement.textContent = message;
+  }
+
   document.getElementById('alertModal').classList.remove('hidden');
 }
 
@@ -163,6 +177,32 @@ function resetInputFields() {
 
   document.getElementById('enableSystemDeps').checked = false;
   document.getElementById('systemDepsInput').classList.add('hidden');
+
+  // Jenkins fields
+  document.getElementById('jenkinsUrl').value = '';
+  document.getElementById('jenkinsJob').value = '';
+  document.getElementById('jenkinsUsername').value = '';
+  document.getElementById('jenkinsToken').value = '';
+  document.getElementById('gitUrl').value = '';
+  document.getElementById('gitBranch').value = 'main';
+  document.getElementById('gitCredentialId').value = '';
+  document.getElementById('imageName').value = '';
+  document.getElementById('imageTag').value = 'latest';
+
+  // Reset Jenkins checkbox and hide config
+  document.getElementById('enableJenkins').checked = false;
+  document.getElementById('jenkinsConfig').classList.add('hidden');
+
+  // Hide Jenkins step
+  document.getElementById('step-jenkins').classList.add('hidden');
+
+  // Clear editor if exists
+  if (editor) {
+    editor.setValue('');
+  }
+
+  // Reset session
+  currentSessionId = null;
 }
 
 // Toggle Java input type (JAR vs Source)
@@ -627,12 +667,27 @@ function toggleJenkins() {
   }
 }
 
+// Toggle Kaniko option visibility
+function toggleKanikoOption() {
+  const k8sCheckbox = document.getElementById('useKubernetes');
+  const kanikoOption = document.getElementById('kanikoOption');
+
+  if (k8sCheckbox.checked) {
+    kanikoOption.classList.remove('hidden');
+  } else {
+    kanikoOption.classList.add('hidden');
+    document.getElementById('useKaniko').checked = false;
+  }
+}
+
 // Get current Dockerfile configuration
 function getCurrentDockerConfig() {
   if (currentLanguage === 'python' || currentLanguage === 'nodejs') {
     const enableEnvVars = document.getElementById('enableEnvVars').checked;
-    const enableHealthCheck = document.getElementById('enableHealthCheck').checked;
-    const enableSystemDeps = document.getElementById('enableSystemDeps').checked;
+    const enableHealthCheck =
+      document.getElementById('enableHealthCheck').checked;
+    const enableSystemDeps =
+      document.getElementById('enableSystemDeps').checked;
 
     const config = {
       language: currentLanguage,
@@ -665,8 +720,10 @@ function getCurrentDockerConfig() {
     return config;
   } else if (currentLanguage === 'java') {
     const enableEnvVars = document.getElementById('enableEnvVars').checked;
-    const enableHealthCheck = document.getElementById('enableHealthCheck').checked;
-    const enableSystemDeps = document.getElementById('enableSystemDeps').checked;
+    const enableHealthCheck =
+      document.getElementById('enableHealthCheck').checked;
+    const enableSystemDeps =
+      document.getElementById('enableSystemDeps').checked;
 
     const config = {
       language: currentLanguage,
@@ -696,6 +753,219 @@ function getCurrentDockerConfig() {
   return null;
 }
 
+// Preview Jenkins Pipeline
+async function previewPipeline() {
+  showLoading();
+
+  try {
+    // Validate Jenkins fields
+    const jenkinsUrl = document.getElementById('jenkinsUrl').value.trim();
+    const jenkinsJob = document.getElementById('jenkinsJob').value.trim();
+    const gitUrl = document.getElementById('gitUrl').value.trim();
+    const imageName = document.getElementById('imageName').value.trim();
+
+    if (!jenkinsUrl) {
+      showAlert('Jenkins URL을 입력해주세요.');
+      hideLoading();
+      return;
+    }
+
+    if (!jenkinsJob) {
+      showAlert('Jenkins Job 이름을 입력해주세요.');
+      hideLoading();
+      return;
+    }
+
+    if (!gitUrl) {
+      showAlert('Git Repository URL을 입력해주세요.');
+      hideLoading();
+      return;
+    }
+
+    if (!imageName) {
+      showAlert('Docker 이미지 이름을 입력해주세요.');
+      hideLoading();
+      return;
+    }
+
+    // Get current Dockerfile config
+    const config = getCurrentDockerConfig();
+    if (!config) {
+      showAlert('Dockerfile 설정을 먼저 완료해주세요.');
+      hideLoading();
+      return;
+    }
+
+    // Build request payload
+    const payload = {
+      config: config,
+      jenkins_url: jenkinsUrl,
+      jenkins_job: jenkinsJob,
+      jenkins_token: 'dummy-token', // Not used for preview
+      jenkins_username: 'dummy-user', // Not used for preview
+      git_url: gitUrl,
+      git_branch: document.getElementById('gitBranch').value.trim() || 'main',
+      git_credential_id:
+        document.getElementById('gitCredentialId').value.trim() || null,
+      image_name: imageName,
+      image_tag: document.getElementById('imageTag').value.trim() || 'latest',
+      use_kubernetes: document.getElementById('useKubernetes').checked,
+      use_kaniko: document.getElementById('useKaniko').checked,
+      harbor_url: document.getElementById('harborUrl').value.trim() || null,
+      harbor_credential_id: document.getElementById('harborCredentialId').value.trim() || null,
+    };
+
+    console.log('Requesting pipeline preview:', payload);
+
+    // Call API
+    const response = await fetch('/api/preview/pipeline', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Pipeline 미리보기 실패');
+    }
+
+    const data = await response.json();
+    cachedPipelineScript = data.pipeline_script;
+
+    console.log('Pipeline preview received');
+
+    // Initialize pipeline editor if not already done
+    if (!pipelineEditor) {
+      const textarea = document.getElementById('pipelineEditor');
+      pipelineEditor = CodeMirror.fromTextArea(textarea, {
+        mode: 'groovy',
+        theme: 'monokai',
+        lineNumbers: true,
+        lineWrapping: true,
+        readOnly: false,
+        indentUnit: 2,
+        tabSize: 2,
+      });
+      pipelineEditor.setSize(null, 500);
+    }
+
+    // Set pipeline content
+    pipelineEditor.setValue(data.pipeline_script);
+
+    // Show modal
+    document.getElementById('pipelinePreviewModal').classList.remove('hidden');
+
+    hideLoading();
+  } catch (error) {
+    console.error('Pipeline preview error:', error);
+    showAlert('Pipeline 미리보기 실패: ' + error.message);
+    hideLoading();
+  }
+}
+
+// Close pipeline preview modal
+function closePipelinePreview() {
+  document.getElementById('pipelinePreviewModal').classList.add('hidden');
+}
+
+// Build with edited pipeline script
+async function buildWithEditedPipeline() {
+  if (!pipelineEditor) {
+    showAlert('Pipeline 스크립트가 없습니다.');
+    return;
+  }
+
+  // Close preview modal
+  closePipelinePreview();
+
+  showLoading();
+
+  try {
+    // Validate Jenkins fields
+    const jenkinsUrl = document.getElementById('jenkinsUrl').value.trim();
+    const jenkinsJob = document.getElementById('jenkinsJob').value.trim();
+    const jenkinsToken = document.getElementById('jenkinsToken').value.trim();
+    const jenkinsUsername =
+      document.getElementById('jenkinsUsername').value.trim() || 'admin';
+
+    if (!jenkinsToken) {
+      showAlert('Jenkins API Token을 입력해주세요.');
+      hideLoading();
+      return;
+    }
+
+    // Get edited pipeline script
+    const editedPipelineScript = pipelineEditor.getValue();
+
+    // Call backend to update pipeline and trigger build
+    const response = await fetch('/api/build/jenkins/custom', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jenkins_url: jenkinsUrl,
+        jenkins_job: jenkinsJob,
+        jenkins_token: jenkinsToken,
+        jenkins_username: jenkinsUsername,
+        pipeline_script: editedPipelineScript,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Jenkins 빌드 실패');
+    }
+
+    const data = await response.json();
+
+    console.log('Jenkins build with custom pipeline response:', data);
+
+    // Show success message
+    const message = `
+      <div class="space-y-4">
+        <div class="text-lg font-semibold text-green-600">
+          🚀 Jenkins 빌드가 시작되었습니다!
+        </div>
+
+        <div class="bg-gray-50 p-4 rounded-lg text-left space-y-2">
+          <div class="flex items-center">
+            <span class="font-medium text-gray-700 mr-2">Job Name:</span>
+            <span class="text-gray-900 font-mono">${data.job_name}</span>
+          </div>
+          ${data.build_number ? `
+          <div class="flex items-center">
+            <span class="font-medium text-gray-700 mr-2">Build Number:</span>
+            <span class="text-blue-600 font-mono font-semibold">#${data.build_number}</span>
+          </div>
+          ` : data.queue_id ? `
+          <div class="flex items-center">
+            <span class="font-medium text-gray-700 mr-2">Queue ID:</span>
+            <span class="text-orange-600 font-mono">#${data.queue_id}</span>
+            <span class="text-xs text-gray-500 ml-2">(빌드 대기 중)</span>
+          </div>
+          ` : ''}
+        </div>
+
+        <div class="pt-2">
+          <a href="${data.job_url}" target="_blank" rel="noopener noreferrer"
+             class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+            </svg>
+            Jenkins에서 빌드 확인하기
+          </a>
+        </div>
+      </div>
+    `;
+
+    showAlert(message, 'success', true);
+  } catch (error) {
+    console.error('Jenkins build with custom pipeline error:', error);
+    showAlert('Jenkins 빌드 실패: ' + error.message);
+  } finally {
+    hideLoading();
+  }
+}
+
 // Build with Jenkins
 async function buildWithJenkins() {
   showLoading();
@@ -705,7 +975,8 @@ async function buildWithJenkins() {
     const jenkinsUrl = document.getElementById('jenkinsUrl').value.trim();
     const jenkinsJob = document.getElementById('jenkinsJob').value.trim();
     const jenkinsToken = document.getElementById('jenkinsToken').value.trim();
-    const jenkinsUsername = document.getElementById('jenkinsUsername').value.trim() || 'admin';
+    const jenkinsUsername =
+      document.getElementById('jenkinsUsername').value.trim() || 'admin';
     const gitUrl = document.getElementById('gitUrl').value.trim();
     const imageName = document.getElementById('imageName').value.trim();
 
@@ -756,9 +1027,14 @@ async function buildWithJenkins() {
       jenkins_username: jenkinsUsername,
       git_url: gitUrl,
       git_branch: document.getElementById('gitBranch').value.trim() || 'main',
-      git_credential_id: document.getElementById('gitCredentialId').value.trim() || null,
+      git_credential_id:
+        document.getElementById('gitCredentialId').value.trim() || null,
       image_name: imageName,
-      image_tag: document.getElementById('imageTag').value.trim() || 'latest'
+      image_tag: document.getElementById('imageTag').value.trim() || 'latest',
+      use_kubernetes: document.getElementById('useKubernetes').checked,
+      use_kaniko: document.getElementById('useKaniko').checked,
+      harbor_url: document.getElementById('harborUrl').value.trim() || null,
+      harbor_credential_id: document.getElementById('harborCredentialId').value.trim() || null,
     };
 
     console.log('Sending Jenkins build request:', payload);
@@ -767,7 +1043,7 @@ async function buildWithJenkins() {
     const response = await fetch('/api/build/jenkins', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
@@ -779,14 +1055,45 @@ async function buildWithJenkins() {
 
     console.log('Jenkins build response:', data);
 
-    // Show success message with clickable URL
-    const message = `Jenkins 빌드가 시작되었습니다!\n\nJob: ${data.job_name}\nStatus: ${data.status}\n\nJenkins에서 빌드 진행 상황을 확인하세요:\n${data.job_url}`;
+    // Show success message with clickable URL and better formatting
+    const message = `
+      <div class="space-y-4">
+        <div class="text-lg font-semibold text-green-600">
+          🚀 Jenkins 빌드가 시작되었습니다!
+        </div>
 
-    showAlert(message, 'success');
+        <div class="bg-gray-50 p-4 rounded-lg text-left space-y-2">
+          <div class="flex items-center">
+            <span class="font-medium text-gray-700 mr-2">Job Name:</span>
+            <span class="text-gray-900 font-mono">${data.job_name}</span>
+          </div>
+          ${data.build_number ? `
+          <div class="flex items-center">
+            <span class="font-medium text-gray-700 mr-2">Build Number:</span>
+            <span class="text-blue-600 font-mono font-semibold">#${data.build_number}</span>
+          </div>
+          ` : data.queue_id ? `
+          <div class="flex items-center">
+            <span class="font-medium text-gray-700 mr-2">Queue ID:</span>
+            <span class="text-orange-600 font-mono">#${data.queue_id}</span>
+            <span class="text-xs text-gray-500 ml-2">(빌드 대기 중)</span>
+          </div>
+          ` : ''}
+        </div>
 
-    // Optional: Open Jenkins URL in new tab
-    // window.open(data.job_url, '_blank');
+        <div class="pt-2">
+          <a href="${data.job_url}" target="_blank" rel="noopener noreferrer"
+             class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+            </svg>
+            Jenkins에서 빌드 확인하기
+          </a>
+        </div>
+      </div>
+    `;
 
+    showAlert(message, 'success', true);
   } catch (error) {
     console.error('Jenkins build error:', error);
     showAlert('Jenkins 빌드 실패: ' + error.message);

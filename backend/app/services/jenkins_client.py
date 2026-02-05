@@ -1,6 +1,5 @@
 """Jenkins API client for triggering builds and updating pipeline scripts"""
 import logging
-import xml.etree.ElementTree as ET
 from typing import Dict, Optional
 import requests
 from requests.auth import HTTPBasicAuth
@@ -47,23 +46,16 @@ class JenkinsClient:
         """
         try:
             crumb_url = f"{self.base_url}/crumbIssuer/api/json"
-            logger.debug(f"Fetching crumb from: {crumb_url}")
-
             response = self.session.get(crumb_url, timeout=10)
 
-            logger.debug(f"Crumb response status: {response.status_code}")
-            logger.debug(f"Crumb response headers: {response.headers}")
-
             if response.status_code == 404:
-                # CSRF protection is not enabled
                 logger.info("Jenkins CSRF protection is not enabled (no crumb required)")
                 return None
 
             # Check if we got HTML instead of JSON (authentication issue)
             content_type = response.headers.get('Content-Type', '')
             if 'text/html' in content_type:
-                logger.error("Received HTML response instead of JSON when fetching crumb - authentication may have failed")
-                logger.error(f"Response content: {response.text[:500]}")
+                logger.error("Received HTML response - authentication may have failed")
                 raise ValueError("Authentication failed: Jenkins returned HTML instead of JSON")
 
             response.raise_for_status()
@@ -73,15 +65,11 @@ class JenkinsClient:
                 data.get('crumbRequestField', 'Jenkins-Crumb'): data.get('crumb', '')
             }
 
-            logger.info(f"Retrieved Jenkins crumb successfully: {list(crumb.keys())[0]}")
-            logger.debug(f"Crumb value: {list(crumb.values())[0][:20]}...")
+            logger.info(f"Retrieved Jenkins crumb successfully")
             return crumb
 
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to get Jenkins crumb: {e}")
-            if hasattr(e, 'response') and e.response is not None:
-                logger.error(f"Response status: {e.response.status_code}")
-                logger.error(f"Response content: {e.response.text[:500]}")
             raise
 
     def create_pipeline_config_xml(self, pipeline_script: str) -> str:
@@ -111,51 +99,9 @@ class JenkinsClient:
 
         return config_xml
 
-    def verify_job_exists(self, job_name: str) -> bool:
-        """
-        Verify that a Jenkins job exists
-
-        Args:
-            job_name: Jenkins job name
-
-        Returns:
-            bool: True if job exists
-
-        Raises:
-            ValueError: If job does not exist
-        """
-        try:
-            job_url = f"{self.base_url}/job/{job_name}/api/json"
-            logger.debug(f"Verifying job exists: {job_url}")
-
-            response = self.session.get(job_url, timeout=10)
-
-            if response.status_code == 404:
-                raise ValueError(f"Jenkins job '{job_name}' not found. Please create the job first.")
-
-            # Check if we got HTML instead of JSON
-            content_type = response.headers.get('Content-Type', '')
-            if 'text/html' in content_type:
-                logger.error("Received HTML response when checking job - authentication or permission issue")
-                logger.error(f"Response content: {response.text[:500]}")
-                raise ValueError("Authentication or permission error: Cannot access Jenkins job")
-
-            response.raise_for_status()
-            logger.info(f"Job '{job_name}' exists and is accessible")
-            return True
-
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Failed to verify job exists: {e}")
-            if hasattr(e, 'response') and e.response is not None:
-                logger.error(f"Response status: {e.response.status_code}")
-                logger.error(f"Response content: {e.response.text[:500]}")
-            raise
-
     def update_pipeline_script(self, job_name: str, pipeline_script: str) -> bool:
         """
         Update Jenkins Pipeline Job의 스크립트
-
-        Uses a simple approach: replace entire config with new pipeline script
 
         Args:
             job_name: Jenkins job name
@@ -168,32 +114,16 @@ class JenkinsClient:
             requests.exceptions.RequestException: Jenkins API 호출 실패
         """
         try:
-            # First verify the job exists
-            self.verify_job_exists(job_name)
-
             config_url = f"{self.base_url}/job/{job_name}/config.xml"
             logger.info(f"Updating job config at: {config_url}")
 
-            # Log the original pipeline script for debugging
-            logger.debug("="*80)
-            logger.debug("ORIGINAL PIPELINE SCRIPT:")
-            logger.debug(pipeline_script)
-            logger.debug("="*80)
-
-            # Create complete config XML with new pipeline script
+            # Create complete config XML with pipeline script
             config_xml = self.create_pipeline_config_xml(pipeline_script)
-
-            # Log the generated XML for debugging
-            logger.debug("="*80)
-            logger.debug("GENERATED CONFIG XML:")
-            logger.debug(config_xml)
-            logger.debug("="*80)
 
             # Prepare headers with crumb if available
             headers = {"Content-Type": "application/xml"}
             if self.crumb:
                 headers.update(self.crumb)
-                logger.debug(f"Using crumb headers: {self.crumb}")
 
             # Post new config to Jenkins
             response = self.session.post(
@@ -209,21 +139,96 @@ class JenkinsClient:
 
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to update pipeline script: {e}")
-
-            # Log response details for debugging
             if hasattr(e, 'response') and e.response is not None:
                 logger.error(f"Response status code: {e.response.status_code}")
                 logger.error(f"Response content: {e.response.text[:500]}")
 
-                # Check if it's a 404 (job doesn't exist)
                 if e.response.status_code == 404:
                     raise ValueError(f"Jenkins job '{job_name}' not found. Please create the job first.")
 
-                # 500 error - likely XML or script issue
                 if e.response.status_code == 500:
-                    raise ValueError(f"Jenkins server error (500). This usually means the config XML is invalid or the Pipeline script has syntax errors. Check Jenkins logs for details.")
+                    raise ValueError(f"Jenkins server error (500). Check Jenkins logs for details.")
 
             raise
+
+    def get_build_number_from_queue(self, queue_id: str, timeout: int = 15) -> Optional[int]:
+        """
+        Get build number from queue ID by polling
+
+        Args:
+            queue_id: Jenkins queue item ID
+            timeout: Maximum seconds to wait for build number
+
+        Returns:
+            int: Build number if found, None otherwise
+        """
+        import time
+
+        if not queue_id:
+            return None
+
+        try:
+            queue_api_url = f"{self.base_url}/queue/item/{queue_id}/api/json"
+            logger.info(f"Polling queue item {queue_id} for build number...")
+
+            start_time = time.time()
+            poll_interval = 0.5  # Poll every 0.5 seconds for faster response
+
+            while time.time() - start_time < timeout:
+                response = self.session.get(queue_api_url, timeout=5)
+
+                # If queue item not found, it might have already completed
+                if response.status_code == 404:
+                    logger.warning(f"Queue item {queue_id} not found (might have completed quickly)")
+                    return None
+
+                response.raise_for_status()
+                data = response.json()
+
+                # Check if build has been created (executable field contains build info)
+                executable = data.get('executable')
+                if executable:
+                    build_number = executable.get('number')
+                    if build_number:
+                        logger.info(f"Found build number: {build_number} for queue ID: {queue_id}")
+                        return build_number
+
+                # Wait a bit before next poll
+                time.sleep(poll_interval)
+
+            logger.warning(f"Timeout waiting for build number for queue ID: {queue_id}")
+            return None
+
+        except Exception as e:
+            logger.error(f"Failed to get build number from queue: {e}")
+            return None
+
+    def get_latest_build_number(self, job_name: str) -> Optional[int]:
+        """
+        Get the latest build number for a job
+
+        Args:
+            job_name: Jenkins job name
+
+        Returns:
+            int: Latest build number if found, None otherwise
+        """
+        try:
+            job_api_url = f"{self.base_url}/job/{job_name}/api/json"
+            response = self.session.get(job_api_url, timeout=5)
+
+            if response.status_code == 200:
+                data = response.json()
+                last_build = data.get('lastBuild')
+                if last_build:
+                    build_number = last_build.get('number')
+                    logger.info(f"Latest build number for {job_name}: {build_number}")
+                    return build_number
+
+            return None
+        except Exception as e:
+            logger.error(f"Failed to get latest build number: {e}")
+            return None
 
     def trigger_build(self, job_name: str) -> Dict:
         """
@@ -233,7 +238,7 @@ class JenkinsClient:
             job_name: Jenkins job name
 
         Returns:
-            dict: Build information including queue ID and build URL
+            dict: Build information including queue ID, build number and build URL
 
         Raises:
             requests.exceptions.RequestException: Jenkins API 호출 실패
@@ -254,52 +259,32 @@ class JenkinsClient:
             queue_location = response.headers.get('Location', '')
             queue_id = queue_location.split('/')[-2] if queue_location else None
 
+            # Try to get build number from queue
+            build_number = None
+            if queue_id:
+                build_number = self.get_build_number_from_queue(queue_id, timeout=15)
+
+            # If still no build number, try getting the latest build number
+            if not build_number:
+                logger.info(f"Attempting to get latest build number for {job_name}")
+                build_number = self.get_latest_build_number(job_name)
+
             build_info = {
                 "job_name": job_name,
                 "queue_id": queue_id,
                 "queue_url": queue_location,
                 "job_url": f"{self.base_url}/job/{job_name}",
-                "status": "QUEUED"
+                "build_number": build_number,
+                "build_url": f"{self.base_url}/job/{job_name}/{build_number}" if build_number else None,
+                "status": "BUILDING" if build_number else "QUEUED"
             }
 
-            logger.info(f"Build triggered successfully. Queue ID: {queue_id}")
+            logger.info(f"Build triggered successfully. Queue ID: {queue_id}, Build Number: {build_number}")
             return build_info
 
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to trigger build: {e}")
             raise
-
-    def get_build_number_from_queue(self, queue_id: str) -> Optional[int]:
-        """
-        Get build number from queue item
-
-        Args:
-            queue_id: Jenkins queue item ID
-
-        Returns:
-            int: Build number if available, None if still queued
-        """
-        try:
-            queue_url = f"{self.base_url}/queue/item/{queue_id}/api/json"
-            response = self.session.get(queue_url, timeout=10)
-
-            if response.status_code == 404:
-                # Queue item might have been processed
-                return None
-
-            response.raise_for_status()
-            data = response.json()
-
-            # Check if build has started
-            executable = data.get('executable', {})
-            if executable:
-                return executable.get('number')
-
-            return None
-
-        except requests.exceptions.RequestException as e:
-            logger.warning(f"Failed to get build number from queue: {e}")
-            return None
 
     def update_and_build(self, job_name: str, pipeline_script: str) -> Dict:
         """

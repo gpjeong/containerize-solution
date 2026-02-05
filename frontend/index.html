@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>
-      WebApp Dockerfile Generator - 웹 서비스용 Dockerfile 자동 생성
+      WebApp Containerization Solution - 웹 서비스용 Dockerfile 자동 생성
     </title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
@@ -17,15 +17,16 @@
     />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/dockerfile/dockerfile.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/groovy/groovy.min.js"></script>
   </head>
   <body class="bg-gray-50 min-h-screen">
     <div class="container mx-auto px-4 py-8 max-w-6xl">
       <!-- Header -->
       <header class="mb-8">
         <h1 class="text-4xl font-bold text-gray-800 mb-2">
-          WebApp Dockerfile Generator
+          WebApp Containerization Solution
         </h1>
-        <p class="text-gray-600">웹 서비스용 Dockerfile 생성 솔루션</p>
+        <p class="text-gray-600">웹 서비스용 Containerization 솔루션</p>
       </header>
 
       <!-- Main Content -->
@@ -355,7 +356,7 @@
         <!-- Step 5: Jenkins Build (Optional) -->
         <div id="step-jenkins" class="step hidden mt-8">
           <h2 class="text-2xl font-semibold mb-4">
-            5. Jenkins 빌드 (선택사항)
+            5. Jenkins를 통한 Docker Image 빌드 (선택사항)
           </h2>
 
           <div class="mb-4">
@@ -535,25 +536,127 @@
               </div>
             </div>
 
-            <button
-              onclick="buildWithJenkins()"
-              class="mt-6 px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition flex items-center gap-2"
-            >
-              <svg
-                class="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+            <!-- Harbor Registry Settings -->
+            <div class="mt-4 p-4 bg-purple-50 border border-purple-200 rounded-md">
+              <h4 class="font-medium text-gray-700 mb-3 flex items-center">
+                <span class="mr-2">🐳</span>
+                Harbor Registry 설정 (선택사항)
+              </h4>
+
+              <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Harbor Registry URL
+                </label>
+                <input
+                  type="text"
+                  id="harborUrl"
+                  class="w-full p-2 border border-gray-300 rounded-md"
+                  placeholder="예: harbor.example.com 또는 harbor.example.com/project"
+                />
+                <p class="text-xs text-gray-500 mt-1">
+                  비어있으면 로컬 빌드만 수행 (tar 파일 저장)
+                </p>
+              </div>
+
+              <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Jenkins Credential ID (Harbor 인증)
+                </label>
+                <input
+                  type="text"
+                  id="harborCredentialId"
+                  class="w-full p-2 border border-gray-300 rounded-md"
+                  placeholder="예: harbor-credentials"
+                />
+                <p class="text-xs text-gray-500 mt-1">
+                  Jenkins에 등록된 Docker Registry 인증 정보 ID
+                </p>
+              </div>
+            </div>
+
+            <!-- Kubernetes Option -->
+            <div class="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
+              <label class="flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  id="useKubernetes"
+                  class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                  onchange="toggleKanikoOption()"
+                />
+                <span class="ml-2 text-sm font-medium text-gray-700">
+                  🚢 Kubernetes 환경용 Pipeline 생성 (Jenkins가 K8s에서 실행 중인 경우)
+                </span>
+              </label>
+              <p class="mt-2 text-xs text-gray-600 ml-6">
+                Jenkins가 Kubernetes 클러스터에서 실행 중이면 이 옵션을 선택하세요.
+              </p>
+
+              <!-- Kaniko Option (shown when Kubernetes is selected) -->
+              <div id="kanikoOption" class="mt-3 ml-6 hidden">
+                <label class="flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    id="useKaniko"
+                    class="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500"
+                  />
+                  <span class="ml-2 text-sm font-medium text-gray-700">
+                    🔧 Kaniko 사용 (권장 - privileged 모드 불필요)
+                  </span>
+                </label>
+                <p class="mt-1 text-xs text-gray-600 ml-6">
+                  Kaniko는 Docker daemon 없이 이미지를 빌드합니다. privileged 권한이 필요 없어 더 안전합니다.
+                  <br/>
+                  ⚠️ DinD에서 문제가 발생하면 Kaniko를 사용하세요.
+                </p>
+              </div>
+            </div>
+
+            <div class="mt-6 flex gap-3">
+              <button
+                onclick="previewPipeline()"
+                class="px-6 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition flex items-center gap-2"
               >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M13 10V3L4 14h7v7l9-11h-7z"
-                ></path>
-              </svg>
-              <span>Jenkins에서 빌드하기</span>
-            </button>
+                <svg
+                  class="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                  ></path>
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                  ></path>
+                </svg>
+                <span>Pipeline 미리보기</span>
+              </button>
+              <button
+                onclick="buildWithJenkins()"
+                class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition flex items-center gap-2"
+              >
+                <svg
+                  class="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M13 10V3L4 14h7v7l9-11h-7z"
+                  ></path>
+                </svg>
+                <span>Jenkins에서 빌드하기</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -634,11 +737,97 @@
             </div>
           </div>
         </div>
+
+        <!-- Pipeline Preview Modal -->
+        <div
+          id="pipelinePreviewModal"
+          class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+        >
+          <div
+            class="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col"
+          >
+            <!-- Modal Header -->
+            <div
+              class="p-6 border-b border-gray-200 flex items-center justify-between"
+            >
+              <div>
+                <h3 class="text-2xl font-semibold text-gray-800">
+                  Jenkins Pipeline 미리보기
+                </h3>
+                <p class="text-sm text-gray-500 mt-1">
+                  파이프라인 스크립트를 확인하고 수정할 수 있습니다
+                </p>
+              </div>
+              <button
+                onclick="closePipelinePreview()"
+                class="text-gray-400 hover:text-gray-600 transition"
+              >
+                <svg
+                  class="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M6 18L18 6M6 6l12 12"
+                  ></path>
+                </svg>
+              </button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="flex-1 overflow-auto p-6">
+              <textarea id="pipelineEditor" class="w-full"></textarea>
+            </div>
+
+            <!-- Modal Footer -->
+            <div
+              class="p-6 border-t border-gray-200 flex justify-between items-center"
+            >
+              <div class="text-sm text-gray-500">
+                <span class="font-medium">💡 Tip:</span> 스크립트를 수정한 후
+                빌드하면 수정된 내용이 적용됩니다
+              </div>
+              <div class="flex gap-3">
+                <button
+                  onclick="closePipelinePreview()"
+                  class="px-6 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition"
+                >
+                  닫기
+                </button>
+                <button
+                  onclick="buildWithEditedPipeline()"
+                  class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition flex items-center gap-2"
+                >
+                  <svg
+                    class="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M13 10V3L4 14h7v7l9-11h-7z"
+                    ></path>
+                  </svg>
+                  <span>이 스크립트로 빌드하기</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Footer -->
       <footer class="text-center text-gray-500 text-sm">
-        <p>WebApp Dockerfile Generator - 웹 서비스 컨테이너라이즈 솔루션</p>
+        <p>
+          WebApp Containerization Solution - 웹 서비스 Containerization 솔루션
+        </p>
       </footer>
     </div>
 

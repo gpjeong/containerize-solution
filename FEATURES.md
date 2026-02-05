@@ -324,6 +324,24 @@ pipeline {
 | Job 없음 | Jenkins Job 미생성 | Pipeline Job 먼저 생성 |
 | 500 서버 오류 | Pipeline 스크립트 오류 | Jenkins 로그 확인 |
 
+#### 4.8 빌드 성공 알림
+빌드가 성공적으로 트리거되면 다음과 같은 정보가 표시됩니다:
+- **빌드 시작 메시지**: "🚀 Jenkins 빌드가 시작되었습니다!"
+- **Job 정보**: Jenkins Job 이름 표시
+- **빌드 확인 버튼**: 클릭 시 Jenkins Job URL로 새 탭에서 이동
+- **실시간 모니터링**: Jenkins 콘솔에서 빌드 진행 상황 확인 가능
+
+**알림 화면 예시:**
+```
+🚀 Jenkins 빌드가 시작되었습니다!
+
+┌─────────────────────────────┐
+│ Job: containerize-pipeline  │
+└─────────────────────────────┘
+
+[Jenkins에서 빌드 확인하기] 버튼
+```
+
 ---
 
 ## 사용 시나리오
@@ -865,6 +883,7 @@ POST /api/build/jenkins
 - ✅ **CSRF 보호**: Jenkins Crumb 자동 처리
 - ✅ **Base64 인코딩**: Dockerfile 안전한 전송
 - ✅ **SSL 지원**: 자체 서명 인증서 지원
+- ✅ **개선된 UI**: 가독성 높은 빌드 성공 메시지 및 클릭 가능한 Jenkins URL
 
 #### Jenkins 관련 추가 파일
 - `backend/app/services/jenkins_client.py`: Jenkins REST API 클라이언트
@@ -876,9 +895,11 @@ POST /api/build/jenkins
 - ✅ Jenkins API 인증 (HTTPBasicAuth)
 - ✅ CSRF 토큰 자동 관리
 - ✅ SSL 인증서 검증 옵션
-- ✅ Job 존재 여부 사전 확인
 - ✅ 상세한 에러 로깅 및 처리
 - ✅ CDATA 섹션으로 XML 파싱 문제 방지
+- ✅ 언어 전환 시 모든 입력 필드 자동 초기화
+- ✅ HTML 형식 알림 메시지 지원
+- ✅ 빌드 성공 시 Jenkins URL 새 탭에서 열기
 
 ### v1.1.0 (2025-02-05)
 

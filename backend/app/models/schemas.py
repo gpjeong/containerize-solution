@@ -182,6 +182,14 @@ class JenkinsBuildRequest(BaseModel):
     image_name: str = Field(..., description="Docker image name")
     image_tag: str = Field(default="latest", description="Docker image tag")
 
+    # Pipeline type
+    use_kubernetes: bool = Field(default=False, description="Use Kubernetes-compatible pipeline (for Jenkins on K8s)")
+    use_kaniko: bool = Field(default=False, description="Use Kaniko instead of Docker-in-Docker (no privileged mode required)")
+
+    # Harbor Registry settings (optional)
+    harbor_url: Optional[str] = Field(None, description="Harbor registry URL (e.g., harbor.example.com/project)")
+    harbor_credential_id: Optional[str] = Field(None, description="Jenkins credential ID for Harbor authentication")
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -210,7 +218,9 @@ class JenkinsBuildResponse(BaseModel):
     queue_id: Optional[str] = Field(None, description="Jenkins queue item ID")
     queue_url: str = Field(..., description="Jenkins queue item URL")
     job_url: str = Field(..., description="Jenkins job URL")
-    status: str = Field(..., description="Build status (QUEUED, IN_PROGRESS, SUCCESS, FAILURE)")
+    build_number: Optional[int] = Field(None, description="Jenkins build number")
+    build_url: Optional[str] = Field(None, description="Jenkins build URL")
+    status: str = Field(..., description="Build status (QUEUED, BUILDING, SUCCESS, FAILURE)")
     message: str = Field(default="", description="Additional message")
 
     class Config:
@@ -220,7 +230,9 @@ class JenkinsBuildResponse(BaseModel):
                 "queue_id": "123",
                 "queue_url": "http://jenkins.example.com:8080/queue/item/123/",
                 "job_url": "http://jenkins.example.com:8080/job/dockerfile-builder/",
-                "status": "QUEUED",
+                "build_number": 42,
+                "build_url": "http://jenkins.example.com:8080/job/dockerfile-builder/42",
+                "status": "BUILDING",
                 "message": "Build triggered successfully"
             }
         }
