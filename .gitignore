@@ -27,6 +27,10 @@ uploads/*
 # Sample applications (managed separately)
 samples/
 
+# New stack code (moved to separate repos)
+backend-spring/
+frontend-react/
+
 # OS
 .DS_Store
 Thumbs.db

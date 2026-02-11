@@ -1,0 +1,25 @@
+services:
+  # Backend API (Spring Boot) - Production
+  backend:
+    image: harbor.example.com/containerize/backend:latest
+    ports:
+      - "8000:8000"
+    volumes:
+      - uploads:/app/uploads
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - APP_UPLOAD_DIRECTORY=/app/uploads
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:4000}
+    restart: unless-stopped
+
+  # Frontend (React) - Production (Nginx)
+  frontend:
+    image: harbor.example.com/containerize/frontend:latest
+    ports:
+      - "4000:4000"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  uploads:

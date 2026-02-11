@@ -1,20 +1,32 @@
-version: '3.8'
-
 services:
-  app:
+  # Backend API (Spring Boot)
+  backend:
     build:
-      context: .
-      dockerfile: backend/Dockerfile
+      context: ../containerize-backend
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
     volumes:
-      # Mount source code for hot reload in development
-      - ./backend/app:/app/app
-      - ./frontend:/app/frontend
       - ./uploads:/app/uploads
     environment:
-      - ENVIRONMENT=development
-      - LOG_LEVEL=INFO
-      - MAX_UPLOAD_SIZE=524288000  # 500MB
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILE:-dev}
+      - APP_UPLOAD_DIRECTORY=/app/uploads
+    restart: unless-stopped
+
+  # Frontend (React + Vite)
+  frontend:
+    build:
+      context: ../containerize-frontend
+      dockerfile: Dockerfile
+      target: development
+    ports:
+      - "4000:4000"
+    volumes:
+      - ../containerize-frontend/src:/app/src
+      - ../containerize-frontend/public:/app/public
+      - ../containerize-frontend/index.html:/app/index.html
+    environment:
+      - API_TARGET=http://backend:8000
+    depends_on:
+      - backend
     restart: unless-stopped
