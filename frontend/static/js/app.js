@@ -1101,3 +1101,363 @@ async function buildWithJenkins() {
     hideLoading();
   }
 }
+
+// ============================================================
+// Jenkins/Harbor Setup Functions
+// ============================================================
+
+/**
+ * Open Jenkins setup modal
+ */
+function openJenkinsSetupModal() {
+  const modal = document.getElementById('jenkinsSetupModal');
+  const statusDiv = document.getElementById('jenkinsSetupStatus');
+  const createBtn = document.getElementById('createJenkinsJobBtn');
+
+  // Pre-fill Jenkins URL and Job name from main form
+  const jenkinsUrl = document.getElementById('jenkinsUrl').value;
+  const jenkinsJob = document.getElementById('jenkinsJob').value;
+
+  if (jenkinsUrl) {
+    document.getElementById('jenkinsSetupUrl').value = jenkinsUrl;
+  }
+  if (jenkinsJob) {
+    document.getElementById('jenkinsSetupJobName').value = jenkinsJob;
+  }
+
+  // Reset status and button
+  statusDiv.classList.add('hidden');
+  createBtn.disabled = true;
+
+  modal.classList.remove('hidden');
+}
+
+/**
+ * Close Jenkins setup modal
+ */
+function closeJenkinsSetupModal(event) {
+  if (event && event.target !== event.currentTarget) {
+    return; // Only close if clicking backdrop
+  }
+
+  const modal = document.getElementById('jenkinsSetupModal');
+  modal.classList.add('hidden');
+
+  // Clear admin credentials for security
+  document.getElementById('jenkinsSetupToken').value = '';
+}
+
+/**
+ * Check if Jenkins job exists
+ */
+async function checkJenkinsJob() {
+  const jenkinsUrl = document.getElementById('jenkinsSetupUrl').value.trim();
+  const jobName = document.getElementById('jenkinsSetupJobName').value.trim();
+  const username = document.getElementById('jenkinsSetupUsername').value.trim();
+  const token = document.getElementById('jenkinsSetupToken').value.trim();
+  const statusDiv = document.getElementById('jenkinsSetupStatus');
+  const createBtn = document.getElementById('createJenkinsJobBtn');
+
+  // Validation
+  if (!jenkinsUrl || !jobName || !username || !token) {
+    statusDiv.innerHTML = '<span class="text-red-600">⚠️ 모든 필수 항목을 입력하세요</span>';
+    statusDiv.classList.remove('hidden', 'bg-green-100', 'bg-red-100', 'bg-blue-100');
+    statusDiv.classList.add('bg-red-100');
+    return;
+  }
+
+  try {
+    statusDiv.innerHTML = '<span class="text-blue-600">🔍 Jenkins Job 존재 확인 중...</span>';
+    statusDiv.classList.remove('hidden', 'bg-green-100', 'bg-red-100');
+    statusDiv.classList.add('bg-blue-100');
+
+    const response = await fetch('/api/setup/jenkins/check-job', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        jenkins_url: jenkinsUrl,
+        jenkins_username: username,
+        jenkins_token: token,
+        job_name: jobName
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.detail || 'Jenkins 연결 실패');
+    }
+
+    if (data.exists) {
+      statusDiv.innerHTML = `<span class="text-green-600">✅ Job '<strong>${jobName}</strong>'이 이미 존재합니다</span>`;
+      statusDiv.classList.remove('bg-blue-100', 'bg-red-100');
+      statusDiv.classList.add('bg-green-100');
+      createBtn.disabled = true;
+    } else {
+      statusDiv.innerHTML = `<span class="text-orange-600">📋 Job '<strong>${jobName}</strong>'이 존재하지 않습니다. 생성 버튼을 클릭하세요</span>`;
+      statusDiv.classList.remove('bg-blue-100', 'bg-green-100');
+      statusDiv.classList.add('bg-yellow-100');
+      createBtn.disabled = false;
+    }
+
+  } catch (error) {
+    console.error('Check Jenkins job error:', error);
+    statusDiv.innerHTML = `<span class="text-red-600">❌ 확인 실패: ${error.message}</span>`;
+    statusDiv.classList.remove('bg-blue-100', 'bg-green-100');
+    statusDiv.classList.add('bg-red-100');
+    createBtn.disabled = true;
+  }
+}
+
+/**
+ * Create Jenkins job
+ */
+async function createJenkinsJob() {
+  const jenkinsUrl = document.getElementById('jenkinsSetupUrl').value.trim();
+  const jobName = document.getElementById('jenkinsSetupJobName').value.trim();
+  const username = document.getElementById('jenkinsSetupUsername').value.trim();
+  const token = document.getElementById('jenkinsSetupToken').value.trim();
+  const description = document.getElementById('jenkinsSetupDescription').value.trim();
+  const statusDiv = document.getElementById('jenkinsSetupStatus');
+  const createBtn = document.getElementById('createJenkinsJobBtn');
+
+  try {
+    createBtn.disabled = true;
+    statusDiv.innerHTML = '<span class="text-blue-600">⚙️ Jenkins Job 생성 중...</span>';
+    statusDiv.classList.remove('hidden', 'bg-green-100', 'bg-red-100', 'bg-yellow-100');
+    statusDiv.classList.add('bg-blue-100');
+
+    const response = await fetch('/api/setup/jenkins/create-job', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        jenkins_url: jenkinsUrl,
+        jenkins_username: username,
+        jenkins_token: token,
+        job_name: jobName,
+        description: description || 'Auto-generated Pipeline job for containerization'
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.detail || 'Job 생성 실패');
+    }
+
+    statusDiv.innerHTML = `
+      <div class="text-green-600">
+        <div class="font-semibold">✅ Job 생성 성공!</div>
+        <div class="text-sm mt-1">Job 이름: <strong>${data.job_name}</strong></div>
+        <div class="text-sm">
+          <a href="${data.job_url}" target="_blank" class="underline">Jenkins에서 확인하기 →</a>
+        </div>
+      </div>
+    `;
+    statusDiv.classList.remove('bg-blue-100', 'bg-red-100', 'bg-yellow-100');
+    statusDiv.classList.add('bg-green-100');
+
+    // Update main form with job name
+    document.getElementById('jenkinsJob').value = jobName;
+
+  } catch (error) {
+    console.error('Create Jenkins job error:', error);
+    statusDiv.innerHTML = `<span class="text-red-600">❌ 생성 실패: ${error.message}</span>`;
+    statusDiv.classList.remove('bg-blue-100', 'bg-green-100', 'bg-yellow-100');
+    statusDiv.classList.add('bg-red-100');
+    createBtn.disabled = false;
+  }
+}
+
+/**
+ * Open Harbor setup modal
+ */
+function openHarborSetupModal() {
+  const modal = document.getElementById('harborSetupModal');
+  const statusDiv = document.getElementById('harborSetupStatus');
+  const createBtn = document.getElementById('createHarborProjectBtn');
+
+  // Pre-fill Harbor URL from main form
+  const harborUrl = document.getElementById('harborUrl').value;
+
+  if (harborUrl) {
+    // Extract base URL (remove project name if present)
+    const baseUrl = harborUrl.split('/')[0];
+    document.getElementById('harborSetupUrl').value = `https://${baseUrl}`;
+  }
+
+  // Reset status and button
+  statusDiv.classList.add('hidden');
+  createBtn.disabled = true;
+
+  modal.classList.remove('hidden');
+}
+
+/**
+ * Close Harbor setup modal
+ */
+function closeHarborSetupModal(event) {
+  if (event && event.target !== event.currentTarget) {
+    return; // Only close if clicking backdrop
+  }
+
+  const modal = document.getElementById('harborSetupModal');
+  modal.classList.add('hidden');
+
+  // Clear admin credentials for security
+  document.getElementById('harborSetupPassword').value = '';
+}
+
+/**
+ * Check if Harbor project exists
+ */
+async function checkHarborProject() {
+  const harborUrl = document.getElementById('harborSetupUrl').value.trim();
+  const projectName = document.getElementById('harborSetupProjectName').value.trim();
+  const username = document.getElementById('harborSetupUsername').value.trim();
+  const password = document.getElementById('harborSetupPassword').value.trim();
+  const statusDiv = document.getElementById('harborSetupStatus');
+  const createBtn = document.getElementById('createHarborProjectBtn');
+
+  // Validation
+  if (!harborUrl || !projectName || !username || !password) {
+    statusDiv.innerHTML = '<span class="text-red-600">⚠️ 모든 필수 항목을 입력하세요</span>';
+    statusDiv.classList.remove('hidden', 'bg-green-100', 'bg-red-100', 'bg-blue-100');
+    statusDiv.classList.add('bg-red-100');
+    return;
+  }
+
+  // Validate project name (lowercase, alphanumeric, -, _ only)
+  if (!/^[a-z0-9][a-z0-9_-]*$/.test(projectName)) {
+    statusDiv.innerHTML = '<span class="text-red-600">⚠️ Project 이름은 소문자, 숫자, -, _만 사용 가능합니다</span>';
+    statusDiv.classList.remove('hidden', 'bg-green-100', 'bg-blue-100');
+    statusDiv.classList.add('bg-red-100');
+    return;
+  }
+
+  try {
+    statusDiv.innerHTML = '<span class="text-blue-600">🔍 Harbor Project 존재 확인 중...</span>';
+    statusDiv.classList.remove('hidden', 'bg-green-100', 'bg-red-100');
+    statusDiv.classList.add('bg-blue-100');
+
+    const response = await fetch('/api/setup/harbor/check-project', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        harbor_url: harborUrl,
+        harbor_username: username,
+        harbor_password: password,
+        project_name: projectName
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.detail || 'Harbor 연결 실패');
+    }
+
+    if (data.exists) {
+      statusDiv.innerHTML = `<span class="text-green-600">✅ Project '<strong>${projectName}</strong>'이 이미 존재합니다</span>`;
+      statusDiv.classList.remove('bg-blue-100', 'bg-red-100');
+      statusDiv.classList.add('bg-green-100');
+      createBtn.disabled = true;
+    } else {
+      statusDiv.innerHTML = `<span class="text-orange-600">📋 Project '<strong>${projectName}</strong>'이 존재하지 않습니다. 생성 버튼을 클릭하세요</span>`;
+      statusDiv.classList.remove('bg-blue-100', 'bg-green-100');
+      statusDiv.classList.add('bg-yellow-100');
+      createBtn.disabled = false;
+    }
+
+  } catch (error) {
+    console.error('Check Harbor project error:', error);
+    statusDiv.innerHTML = `<span class="text-red-600">❌ 확인 실패: ${error.message}</span>`;
+    statusDiv.classList.remove('bg-blue-100', 'bg-green-100');
+    statusDiv.classList.add('bg-red-100');
+    createBtn.disabled = true;
+  }
+}
+
+/**
+ * Create Harbor project
+ */
+async function createHarborProject() {
+  const harborUrl = document.getElementById('harborSetupUrl').value.trim();
+  const projectName = document.getElementById('harborSetupProjectName').value.trim();
+  const username = document.getElementById('harborSetupUsername').value.trim();
+  const password = document.getElementById('harborSetupPassword').value.trim();
+  const isPublic = document.getElementById('harborSetupPublic').checked;
+  const autoScan = document.getElementById('harborSetupAutoScan').checked;
+  const contentTrust = document.getElementById('harborSetupContentTrust').checked;
+  const preventVul = document.getElementById('harborSetupPreventVul').checked;
+  const severity = document.getElementById('harborSetupSeverity').value;
+  const statusDiv = document.getElementById('harborSetupStatus');
+  const createBtn = document.getElementById('createHarborProjectBtn');
+
+  try {
+    createBtn.disabled = true;
+    statusDiv.innerHTML = '<span class="text-blue-600">⚙️ Harbor Project 생성 중...</span>';
+    statusDiv.classList.remove('hidden', 'bg-green-100', 'bg-red-100', 'bg-yellow-100');
+    statusDiv.classList.add('bg-blue-100');
+
+    const response = await fetch('/api/setup/harbor/create-project', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        harbor_url: harborUrl,
+        harbor_username: username,
+        harbor_password: password,
+        project_name: projectName,
+        public: isPublic,
+        enable_content_trust: contentTrust,
+        auto_scan: autoScan,
+        severity: severity,
+        prevent_vul: preventVul
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.detail || 'Project 생성 실패');
+    }
+
+    const settingsInfo = [];
+    if (isPublic) settingsInfo.push('Public');
+    if (autoScan) settingsInfo.push('자동 스캔');
+    if (contentTrust) settingsInfo.push('Content Trust');
+    if (preventVul) settingsInfo.push('취약점 차단');
+
+    statusDiv.innerHTML = `
+      <div class="text-green-600">
+        <div class="font-semibold">✅ Project 생성 성공!</div>
+        <div class="text-sm mt-1">Project 이름: <strong>${data.project_name}</strong></div>
+        <div class="text-sm">설정: ${settingsInfo.join(', ') || '기본 설정'}</div>
+        <div class="text-sm">
+          <a href="${data.project_url}" target="_blank" class="underline">Harbor에서 확인하기 →</a>
+        </div>
+      </div>
+    `;
+    statusDiv.classList.remove('bg-blue-100', 'bg-red-100', 'bg-yellow-100');
+    statusDiv.classList.add('bg-green-100');
+
+    // Update main form with project URL
+    const baseHarborUrl = harborUrl.replace(/^https?:\/\//, '');
+    document.getElementById('harborUrl').value = `${baseHarborUrl}/${projectName}`;
+
+  } catch (error) {
+    console.error('Create Harbor project error:', error);
+    statusDiv.innerHTML = `<span class="text-red-600">❌ 생성 실패: ${error.message}</span>`;
+    statusDiv.classList.remove('bg-blue-100', 'bg-green-100', 'bg-yellow-100');
+    statusDiv.classList.add('bg-red-100');
+    createBtn.disabled = false;
+  }
+}

@@ -236,3 +236,79 @@ class JenkinsBuildResponse(BaseModel):
                 "message": "Build triggered successfully"
             }
         }
+
+
+# ============================================================
+# Setup Schemas - Jenkins & Harbor Project Creation
+# ============================================================
+
+class JenkinsJobCheckRequest(BaseModel):
+    """Request for checking if Jenkins job exists"""
+    jenkins_url: str = Field(..., description="Jenkins server URL")
+    jenkins_username: str = Field(..., description="Jenkins admin username")
+    jenkins_token: str = Field(..., description="Jenkins API token")
+    job_name: str = Field(..., description="Job name to check")
+
+
+class JenkinsJobCheckResponse(BaseModel):
+    """Response for Jenkins job existence check"""
+    exists: bool
+    job_name: str
+    job_url: Optional[str] = None
+
+
+class JenkinsJobCreateRequest(BaseModel):
+    """Request for creating Jenkins job"""
+    jenkins_url: str = Field(..., description="Jenkins server URL")
+    jenkins_username: str = Field(..., description="Jenkins admin username")
+    jenkins_token: str = Field(..., description="Jenkins API token")
+    job_name: str = Field(..., description="Job name to create")
+    description: str = Field(
+        default="Auto-generated Pipeline job for containerization",
+        description="Job description"
+    )
+
+
+class JenkinsJobCreateResponse(BaseModel):
+    """Response for Jenkins job creation"""
+    job_name: str
+    job_url: str
+    status: str  # created | already_exists
+    message: str
+
+
+class HarborProjectCheckRequest(BaseModel):
+    """Request for checking if Harbor project exists"""
+    harbor_url: str = Field(..., description="Harbor server URL")
+    harbor_username: str = Field(..., description="Harbor admin username")
+    harbor_password: str = Field(..., description="Harbor admin password")
+    project_name: str = Field(..., description="Project name to check")
+
+
+class HarborProjectCheckResponse(BaseModel):
+    """Response for Harbor project existence check"""
+    exists: bool
+    project_name: str
+    project_url: Optional[str] = None
+
+
+class HarborProjectCreateRequest(BaseModel):
+    """Request for creating Harbor project"""
+    harbor_url: str = Field(..., description="Harbor server URL")
+    harbor_username: str = Field(..., description="Harbor admin username")
+    harbor_password: str = Field(..., description="Harbor admin password")
+    project_name: str = Field(..., description="Project name to create")
+    public: bool = Field(default=False, description="Make project public")
+    enable_content_trust: bool = Field(default=False, description="Enable content trust")
+    auto_scan: bool = Field(default=True, description="Auto scan images on push")
+    severity: str = Field(default="high", description="Vulnerability severity threshold")
+    prevent_vul: bool = Field(default=False, description="Prevent vulnerable images")
+
+
+class HarborProjectCreateResponse(BaseModel):
+    """Response for Harbor project creation"""
+    project_name: str
+    project_url: str
+    status: str  # created | already_exists
+    message: str
+    settings: Dict = {}

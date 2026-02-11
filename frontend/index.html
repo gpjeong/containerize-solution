@@ -434,6 +434,19 @@
               </div>
             </div>
 
+            <!-- NEW: Jenkins Job 생성 버튼 -->
+            <div class="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-sm font-medium text-blue-900">Jenkins Job이 없으신가요?</p>
+                  <p class="text-xs text-blue-700 mt-1">아래 버튼으로 Pipeline Job을 자동 생성하세요</p>
+                </div>
+                <button onclick="openJenkinsSetupModal()" type="button" class="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition">
+                  🔧 Jenkins Job 생성
+                </button>
+              </div>
+            </div>
+
             <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -542,7 +555,7 @@
             >
               <h4 class="font-medium text-gray-700 mb-3 flex items-center">
                 <span class="mr-2">🐳</span>
-                Harbor Registry 설정 (선택사항)
+                Harbor Registry 설정
               </h4>
 
               <div class="mb-3">
@@ -558,6 +571,19 @@
                 <p class="text-xs text-gray-500 mt-1">
                   비어있으면 로컬 빌드만 수행 (tar 파일 저장)
                 </p>
+              </div>
+
+              <!-- NEW: Harbor Project 생성 버튼 -->
+              <div class="mb-4 p-4 bg-green-50 border border-green-200 rounded-md">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <p class="text-sm font-medium text-green-900">Harbor Project가 없으신가요?</p>
+                    <p class="text-xs text-green-700 mt-1">아래 버튼으로 Harbor Project를 자동 생성하세요</p>
+                  </div>
+                  <button onclick="openHarborSetupModal()" type="button" class="px-4 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 transition">
+                    🚢 Harbor Project 생성
+                  </button>
+                </div>
               </div>
 
               <div class="mb-3">
@@ -805,6 +831,326 @@
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Jenkins Setup Modal -->
+      <div
+        id="jenkinsSetupModal"
+        class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+        onclick="closeJenkinsSetupModal(event)"
+      >
+        <div
+          class="bg-white rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col"
+          onclick="event.stopPropagation()"
+        >
+          <!-- Modal Header -->
+          <div
+            class="p-6 border-b border-gray-200 flex justify-between items-center"
+          >
+            <div>
+              <h3 class="text-xl font-bold text-gray-900">🔧 Jenkins Job 생성</h3>
+              <p class="text-sm text-gray-500 mt-1">Pipeline Job을 자동으로 생성합니다</p>
+            </div>
+            <button
+              onclick="closeJenkinsSetupModal()"
+              class="text-gray-400 hover:text-gray-600 transition"
+            >
+              <svg
+                class="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M6 18L18 6M6 6l12 12"
+                ></path>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Modal Body -->
+          <div class="flex-1 overflow-auto p-6">
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Jenkins URL <span class="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="jenkinsSetupUrl"
+                  class="w-full p-2 border border-gray-300 rounded-md"
+                  placeholder="예: http://jenkins.example.com:8080"
+                />
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Job Name <span class="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="jenkinsSetupJobName"
+                  class="w-full p-2 border border-gray-300 rounded-md"
+                  placeholder="예: dockerfile-builder"
+                />
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Admin Username <span class="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="jenkinsSetupUsername"
+                  value="admin"
+                  class="w-full p-2 border border-gray-300 rounded-md"
+                  placeholder="Jenkins admin username"
+                />
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Admin API Token <span class="text-red-500">*</span>
+                </label>
+                <input
+                  type="password"
+                  id="jenkinsSetupToken"
+                  class="w-full p-2 border border-gray-300 rounded-md"
+                  placeholder="Jenkins admin API token"
+                />
+                <p class="text-xs text-gray-500 mt-1">
+                  💡 Job 생성 권한이 있는 관리자 계정이 필요합니다
+                </p>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Job Description (선택)
+                </label>
+                <input
+                  type="text"
+                  id="jenkinsSetupDescription"
+                  value="Auto-generated Pipeline job for containerization"
+                  class="w-full p-2 border border-gray-300 rounded-md"
+                  placeholder="Job 설명"
+                />
+              </div>
+
+              <!-- Status message -->
+              <div id="jenkinsSetupStatus" class="hidden p-3 rounded-md"></div>
+            </div>
+          </div>
+
+          <!-- Modal Footer -->
+          <div class="p-6 border-t border-gray-200 flex justify-end gap-3">
+            <button
+              onclick="closeJenkinsSetupModal()"
+              class="px-6 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition"
+            >
+              취소
+            </button>
+            <button
+              onclick="checkJenkinsJob()"
+              class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+            >
+              1️⃣ Job 존재 확인
+            </button>
+            <button
+              id="createJenkinsJobBtn"
+              onclick="createJenkinsJob()"
+              disabled
+              class="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+              2️⃣ Job 생성하기
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Harbor Setup Modal -->
+      <div
+        id="harborSetupModal"
+        class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+        onclick="closeHarborSetupModal(event)"
+      >
+        <div
+          class="bg-white rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col"
+          onclick="event.stopPropagation()"
+        >
+          <!-- Modal Header -->
+          <div
+            class="p-6 border-b border-gray-200 flex justify-between items-center"
+          >
+            <div>
+              <h3 class="text-xl font-bold text-gray-900">🚢 Harbor Project 생성</h3>
+              <p class="text-sm text-gray-500 mt-1">Harbor 프로젝트를 자동으로 생성합니다</p>
+            </div>
+            <button
+              onclick="closeHarborSetupModal()"
+              class="text-gray-400 hover:text-gray-600 transition"
+            >
+              <svg
+                class="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M6 18L18 6M6 6l12 12"
+                ></path>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Modal Body -->
+          <div class="flex-1 overflow-auto p-6">
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Harbor URL <span class="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="harborSetupUrl"
+                  class="w-full p-2 border border-gray-300 rounded-md"
+                  placeholder="예: https://harbor.example.com"
+                />
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Project Name <span class="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="harborSetupProjectName"
+                  class="w-full p-2 border border-gray-300 rounded-md"
+                  placeholder="예: myproject (소문자, 숫자, -, _ 허용)"
+                />
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Admin Username <span class="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="harborSetupUsername"
+                  value="admin"
+                  class="w-full p-2 border border-gray-300 rounded-md"
+                  placeholder="Harbor admin username"
+                />
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Admin Password <span class="text-red-500">*</span>
+                </label>
+                <input
+                  type="password"
+                  id="harborSetupPassword"
+                  class="w-full p-2 border border-gray-300 rounded-md"
+                  placeholder="Harbor admin password"
+                />
+                <p class="text-xs text-gray-500 mt-1">
+                  💡 Project 생성 권한이 있는 관리자 계정이 필요합니다
+                </p>
+              </div>
+
+              <!-- Project Settings -->
+              <div class="border-t pt-4">
+                <h4 class="text-sm font-semibold text-gray-700 mb-3">프로젝트 설정</h4>
+
+                <div class="space-y-3">
+                  <label class="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="harborSetupPublic"
+                      class="mr-2"
+                    />
+                    <span class="text-sm text-gray-700">Public 프로젝트 (누구나 접근 가능)</span>
+                  </label>
+
+                  <label class="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="harborSetupAutoScan"
+                      checked
+                      class="mr-2"
+                    />
+                    <span class="text-sm text-gray-700">이미지 Push 시 자동 취약점 스캔</span>
+                  </label>
+
+                  <label class="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="harborSetupContentTrust"
+                      class="mr-2"
+                    />
+                    <span class="text-sm text-gray-700">Content Trust 활성화 (이미지 서명)</span>
+                  </label>
+
+                  <label class="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="harborSetupPreventVul"
+                      class="mr-2"
+                    />
+                    <span class="text-sm text-gray-700">취약점 있는 이미지 Pull 차단</span>
+                  </label>
+
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                      취약점 심각도 기준
+                    </label>
+                    <select
+                      id="harborSetupSeverity"
+                      class="w-full p-2 border border-gray-300 rounded-md"
+                    >
+                      <option value="critical">Critical (치명적)</option>
+                      <option value="high" selected>High (높음)</option>
+                      <option value="medium">Medium (중간)</option>
+                      <option value="low">Low (낮음)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Status message -->
+              <div id="harborSetupStatus" class="hidden p-3 rounded-md"></div>
+            </div>
+          </div>
+
+          <!-- Modal Footer -->
+          <div class="p-6 border-t border-gray-200 flex justify-end gap-3">
+            <button
+              onclick="closeHarborSetupModal()"
+              class="px-6 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition"
+            >
+              취소
+            </button>
+            <button
+              onclick="checkHarborProject()"
+              class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+            >
+              1️⃣ Project 존재 확인
+            </button>
+            <button
+              id="createHarborProjectBtn"
+              onclick="createHarborProject()"
+              disabled
+              class="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+              2️⃣ Project 생성하기
+            </button>
           </div>
         </div>
       </div>

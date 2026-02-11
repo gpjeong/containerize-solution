@@ -1,5 +1,5 @@
 """API endpoints for Dockerfile generation"""
-from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks
+from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Body
 from fastapi.responses import FileResponse, Response
 from typing import Dict
 from uuid import uuid4
@@ -15,7 +15,15 @@ from app.models.schemas import (
     JavaConfig,
     ProjectInfo,
     JenkinsBuildRequest,
-    JenkinsBuildResponse
+    JenkinsBuildResponse,
+    JenkinsJobCheckRequest,
+    JenkinsJobCheckResponse,
+    JenkinsJobCreateRequest,
+    JenkinsJobCreateResponse,
+    HarborProjectCheckRequest,
+    HarborProjectCheckResponse,
+    HarborProjectCreateRequest,
+    HarborProjectCreateResponse
 )
 from app.utils.security import validate_upload
 from app.utils.file_handler import upload_manager
@@ -472,3 +480,248 @@ async def trigger_jenkins_build(request: JenkinsBuildRequest):
     except Exception as e:
         logger.error(f"Failed to trigger Jenkins build: {e}")
         raise HTTPException(status_code=500, detail=f"Jenkins build failed: {str(e)}")
+
+
+# ============================================================
+# Setup Endpoints - Jenkins Job & Harbor Project Creation
+# ============================================================
+
+@router.post("/setup/jenkins/check-job")
+async def check_jenkins_job(
+    jenkins_url: str = Body(...),
+    jenkins_username: str = Body(...),
+    jenkins_token: str = Body(...),
+    job_name: str = Body(...)
+):
+    """
+    Check if Jenkins job exists
+
+    Request Body:
+    - jenkins_url: Jenkins server URL
+    - jenkins_username: Jenkins admin username
+    - jenkins_token: Jenkins API token
+    - job_name: Job name to check
+
+    Response:
+    - exists: bool
+    - job_name: str
+    - job_url: str (if exists)
+    """
+    try:
+        from app.services.jenkins_client import create_jenkins_client
+
+        jenkins_client = create_jenkins_client(
+            jenkins_url=jenkins_url,
+            username=jenkins_username,
+            api_token=jenkins_token
+        )
+
+        exists = jenkins_client.check_job_exists(job_name)
+
+        response = {
+            "exists": exists,
+            "job_name": job_name
+        }
+
+        if exists:
+            response["job_url"] = f"{jenkins_url}/job/{job_name}"
+
+        return response
+
+    except Exception as e:
+        logger.error(f"Failed to check Jenkins job: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/setup/jenkins/create-job")
+async def create_jenkins_job(
+    jenkins_url: str = Body(...),
+    jenkins_username: str = Body(...),
+    jenkins_token: str = Body(...),
+    job_name: str = Body(...),
+    description: str = Body("Auto-generated Pipeline job for containerization")
+):
+    """
+    Create new Jenkins Pipeline job
+
+    Request Body:
+    - jenkins_url: Jenkins server URL
+    - jenkins_username: Jenkins admin username
+    - jenkins_token: Jenkins API token
+    - job_name: Job name to create
+    - description: Job description (optional)
+
+    Response:
+    - job_name: str
+    - job_url: str
+    - status: str
+    - message: str
+    """
+    try:
+        from app.services.jenkins_client import create_jenkins_client
+
+        jenkins_client = create_jenkins_client(
+            jenkins_url=jenkins_url,
+            username=jenkins_username,
+            api_token=jenkins_token
+        )
+
+        # Check if already exists
+        if jenkins_client.check_job_exists(job_name):
+            return {
+                "job_name": job_name,
+                "job_url": f"{jenkins_url}/job/{job_name}",
+                "status": "already_exists",
+                "message": f"Job '{job_name}' already exists"
+            }
+
+        # Create job
+        result = jenkins_client.create_job(job_name, description)
+        result["message"] = f"Job '{job_name}' created successfully"
+
+        return result
+
+    except ValueError as e:
+        logger.error(f"Job creation failed: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to create Jenkins job: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/setup/harbor/check-project")
+async def check_harbor_project(
+    harbor_url: str = Body(...),
+    harbor_username: str = Body(...),
+    harbor_password: str = Body(...),
+    project_name: str = Body(...)
+):
+    """
+    Check if Harbor project exists
+
+    Request Body:
+    - harbor_url: Harbor server URL (e.g., https://harbor.example.com)
+    - harbor_username: Harbor admin username
+    - harbor_password: Harbor admin password
+    - project_name: Project name to check
+
+    Response:
+    - exists: bool
+    - project_name: str
+    - project_url: str (if exists)
+    """
+    try:
+        from app.services.harbor_client import HarborClient
+
+        # Remove project name from harbor_url if present
+        base_harbor_url = harbor_url.split('/')[0:3]  # https://harbor.example.com
+        base_harbor_url = '/'.join(base_harbor_url)
+
+        harbor_client = HarborClient(
+            harbor_url=base_harbor_url,
+            username=harbor_username,
+            password=harbor_password
+        )
+
+        exists = harbor_client.check_project_exists(project_name)
+
+        response = {
+            "exists": exists,
+            "project_name": project_name
+        }
+
+        if exists:
+            response["project_url"] = f"{base_harbor_url}/harbor/projects"
+
+        return response
+
+    except Exception as e:
+        logger.error(f"Failed to check Harbor project: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/setup/harbor/create-project")
+async def create_harbor_project(
+    harbor_url: str = Body(...),
+    harbor_username: str = Body(...),
+    harbor_password: str = Body(...),
+    project_name: str = Body(...),
+    public: bool = Body(False),
+    enable_content_trust: bool = Body(False),
+    auto_scan: bool = Body(True),
+    severity: str = Body("high"),
+    prevent_vul: bool = Body(False)
+):
+    """
+    Create new Harbor project
+
+    Request Body:
+    - harbor_url: Harbor server URL
+    - harbor_username: Harbor admin username
+    - harbor_password: Harbor admin password
+    - project_name: Project name to create
+    - public: Make project public (default: False)
+    - enable_content_trust: Enable content trust (default: False)
+    - auto_scan: Auto scan images (default: True)
+    - severity: Vulnerability severity (critical/high/medium/low)
+    - prevent_vul: Prevent vulnerable images (default: False)
+
+    Response:
+    - project_name: str
+    - project_url: str
+    - status: str
+    - message: str
+    - settings: dict
+    """
+    try:
+        from app.services.harbor_client import HarborClient
+
+        # Remove project name from harbor_url if present
+        base_harbor_url = harbor_url.split('/')[0:3]
+        base_harbor_url = '/'.join(base_harbor_url)
+
+        harbor_client = HarborClient(
+            harbor_url=base_harbor_url,
+            username=harbor_username,
+            password=harbor_password
+        )
+
+        # Check if already exists
+        if harbor_client.check_project_exists(project_name):
+            return {
+                "project_name": project_name,
+                "project_url": f"{base_harbor_url}/harbor/projects",
+                "status": "already_exists",
+                "message": f"Project '{project_name}' already exists"
+            }
+
+        # Create project
+        result = harbor_client.create_project(
+            project_name=project_name,
+            public=public,
+            enable_content_trust=enable_content_trust,
+            auto_scan=auto_scan,
+            severity=severity,
+            prevent_vul=prevent_vul
+        )
+
+        return {
+            "project_name": project_name,
+            "project_url": f"{base_harbor_url}/harbor/projects",
+            "status": "created",
+            "message": f"Project '{project_name}' created successfully",
+            "settings": {
+                "public": public,
+                "auto_scan": auto_scan,
+                "severity": severity,
+                "content_trust": enable_content_trust,
+                "prevent_vulnerable": prevent_vul
+            }
+        }
+
+    except ValueError as e:
+        logger.error(f"Project creation failed: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to create Harbor project: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

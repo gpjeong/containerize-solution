@@ -308,6 +308,141 @@ class JenkinsClient:
 
         return build_info
 
+    def check_job_exists(self, job_name: str) -> bool:
+        """
+        Check if Jenkins job exists
+
+        Args:
+            job_name: Job name to check
+
+        Returns:
+            True if job exists, False otherwise
+        """
+        try:
+            url = f"{self.base_url}/job/{job_name}/api/json"
+            response = self.session.get(url, timeout=10)
+
+            if response.status_code == 200:
+                logger.info(f"Jenkins job '{job_name}' exists")
+                return True
+            elif response.status_code == 404:
+                logger.info(f"Jenkins job '{job_name}' does not exist")
+                return False
+            else:
+                logger.warning(f"Unexpected status {response.status_code} checking job")
+                return False
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to check Jenkins job: {e}")
+            raise ValueError(f"Jenkins connection failed: {str(e)}")
+
+    def create_job(
+        self,
+        job_name: str,
+        description: str = "Auto-generated Pipeline job for containerization"
+    ) -> Dict:
+        """
+        Create new Pipeline job in Jenkins
+
+        Args:
+            job_name: Job name
+            description: Job description
+
+        Returns:
+            Dict with job info
+
+        Raises:
+            ValueError: If job creation fails
+        """
+        try:
+            # Empty pipeline script (will be updated later)
+            empty_pipeline_script = """
+pipeline {
+    agent any
+    stages {
+        stage('Example') {
+            steps {
+                echo 'Pipeline will be auto-generated'
+            }
+        }
+    }
+}
+"""
+
+            config_xml = f"""<?xml version='1.1' encoding='UTF-8'?>
+<flow-definition plugin="workflow-job@2.40">
+  <description>{description}</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>IMAGE_NAME</name>
+          <description>Docker image name</description>
+          <defaultValue>myapp</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>IMAGE_TAG</name>
+          <description>Docker image tag</description>
+          <defaultValue>latest</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2.90">
+    <script><![CDATA[{empty_pipeline_script}]]></script>
+    <sandbox>true</sandbox>
+  </definition>
+  <triggers/>
+  <disabled>false</disabled>
+</flow-definition>"""
+
+            # Create job endpoint
+            create_url = f"{self.base_url}/createItem"
+            params = {"name": job_name}
+            headers = {"Content-Type": "application/xml"}
+
+            if self.crumb:
+                headers.update(self.crumb)
+
+            response = self.session.post(
+                create_url,
+                params=params,
+                data=config_xml.encode('utf-8'),
+                headers=headers,
+                timeout=30
+            )
+
+            if response.status_code == 200:
+                logger.info(f"Jenkins job '{job_name}' created successfully")
+                return {
+                    "job_name": job_name,
+                    "job_url": f"{self.base_url}/job/{job_name}",
+                    "status": "created"
+                }
+
+            elif response.status_code == 400:
+                # Check if it's because job already exists
+                if "already exists" in response.text.lower():
+                    raise ValueError(f"Job '{job_name}' already exists")
+                else:
+                    raise ValueError(f"Invalid job configuration: {response.text[:200]}")
+
+            elif response.status_code == 401:
+                raise ValueError("Authentication failed. Check Jenkins credentials.")
+
+            elif response.status_code == 403:
+                raise ValueError("Permission denied. User needs Job/Create permission.")
+
+            else:
+                raise ValueError(f"Job creation failed with status {response.status_code}")
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to create Jenkins job: {e}")
+            raise ValueError(f"Jenkins API error: {str(e)}")
+
 
 # Global instance (will be created per request)
 def create_jenkins_client(jenkins_url: str, username: str, api_token: str, verify_ssl: bool = False) -> JenkinsClient:
